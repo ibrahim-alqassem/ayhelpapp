@@ -263,20 +263,19 @@ function renderAuth(el, mode) {
     <div class="brandmark"><img class="logoimg" src="icon-192.png" alt=""><div><h1>${APP}</h1><p>${TAG}</p></div></div>
     ${o.why ? `<div class="notebox">${ico("info")}<span>${esc(o.why)}</span></div>` : ""}
     <h2>${signup ? t("أنشئ حسابك مجاناً") : t("مرحباً بعودتك!")}</h2>
-    <p class="sub">${signup ? t("سجّل برقم جوالك وكلمة مرور، بدون رسائل تحقق") : t("ادخل برقم جوالك وكلمة المرور")}</p>
+    <p class="sub">${signup ? t("سجّل برقم جوالك وكلمة مرور خلال ثوانٍ") : t("ادخل برقم جوالك وكلمة المرور")}</p>
     <form class="form" id="aForm" novalidate>
       ${signup ? `<div class="in"><label>${t("أريد أن")}</label><div class="seg2">
         <label><input type="radio" name="role" value="customer" ${role === "customer" ? "checked" : ""}><span>${ico("search")}${t("أطلب خدمة")}</span></label>
         <label><input type="radio" name="role" value="provider" ${role === "provider" ? "checked" : ""}><span>${ico("store")}${t("أقدّم خدمة")}</span></label></div>
         <div class="hint">${t("الحساب واحد للحالتين، وتستطيع عرض خدمتك لاحقاً في أي وقت.")}</div></div>
       <div class="in"><label for="aName">${t("الاسم")}</label><input id="aName" autocomplete="name" placeholder="${t("اسمك أو اسم نشاطك")}"></div>` : ""}
-      <div class="in" id="phoneIn"><label for="aPhone">${t("رقم الجوال")}</label><div class="phone"><span>+966</span><input id="aPhone" inputmode="numeric" maxlength="10" placeholder="5XXXXXXXX" autocomplete="tel-national"></div><div class="hint">${signup ? t("رقمك هو اسم الدخول، ويظهر لمن تتعامل معه للاتصال أو واتساب.") : ""}</div></div>
-      ${signup ? "" : `<div class="in" id="emailIn" hidden><label for="aEmail">${t("البريد الإلكتروني")}</label><input id="aEmail" type="email" class="ltr" autocomplete="email" placeholder="name@example.com"></div>`}
+      <div class="in" id="phoneIn"><label for="aPhone">${t("رقم الجوال")}</label><div class="phone"><span id="aCC">+966</span><input id="aPhone" inputmode="numeric" ${signup ? 'maxlength="10"' : ""} placeholder="5XXXXXXXX" autocomplete="${signup ? "tel-national" : "username"}"></div><div class="hint">${signup ? t("رقمك هو اسم الدخول، ويظهر لمن تتعامل معه للاتصال أو واتساب.") : ""}</div></div>
       <div class="in"><label for="aPass">${t("كلمة المرور")}</label><input id="aPass" type="password" class="ltr" autocomplete="${signup ? "new-password" : "current-password"}" placeholder="${t("٦ أحرف أو أرقام على الأقل")}"></div>
       <div class="err" id="aErr" role="alert"></div>
       ${signup ? `<p class="terms">${t("بالمتابعة، أوافق على")} <button type="button" id="aTerms">${t("الشروط والأحكام وسياسة الخصوصية")}</button></p>` : ""}
       <button class="btn" type="submit" id="aBtn">${signup ? t("إنشاء الحساب") : t("دخول")}</button>
-      ${signup ? "" : `<button type="button" class="textlink center" id="aForgot">${t("نسيت كلمة المرور؟")}</button><button type="button" class="textlink center small" id="aUseEmail">${t("سجّلت سابقاً بالبريد الإلكتروني؟ ادخل به")}</button>`}
+      ${signup ? "" : `<button type="button" class="textlink center" id="aForgot">${t("نسيت كلمة المرور؟")}</button>`}
     </form>
     <div class="switchbox">${signup ? t("لديك حساب؟") : t("ليس لديك حساب؟")} <button type="button" class="btn ghost sm" id="aSwitch">${signup ? t("سجّل الدخول") : t("أنشئ حساباً جديداً")}</button></div>
   </div>`;
@@ -285,12 +284,18 @@ function renderAuth(el, mode) {
   q("#aSwitch").onclick = () => renderAuth(el, signup ? "login" : "signup");
   if (q("#aTerms")) q("#aTerms").onclick = termsBox;
   if (q("#aPhone")) q("#aPhone").oninput = e => e.target.value = toEn(e.target.value).replace(/\D/g, "").slice(0, 10);
+  /* دخول خفي بالبريد (للمدير والمراجع): خانة الجوال تقبل البريد إذا كُتب أو لُصق فيها «@»،
+     والضغط المطوّل على +966 يفتح لوحة مفاتيح البريد */
   let byEmail = false;
-  if (q("#aUseEmail")) q("#aUseEmail").onclick = () => {
-    byEmail = !byEmail; q("#emailIn").hidden = !byEmail; q("#phoneIn").hidden = byEmail;
-    q("#aUseEmail").textContent = byEmail ? t("ادخل برقم الجوال") : t("سجّلت سابقاً بالبريد الإلكتروني؟ ادخل به");
-    err.textContent = ""; (byEmail ? q("#aEmail") : q("#aPhone")).focus();
-  };
+  const ph = q("#aPhone"), cc = q("#aCC");
+  const mailMode = on => { byEmail = on; cc.hidden = on; ph.classList.toggle("ltr", on); ph.inputMode = on ? "email" : "numeric"; };
+  if (!signup) {
+    ph.addEventListener("input", () => { if (ph.value.includes("@") !== byEmail) mailMode(ph.value.includes("@")); });
+    let lp = null;
+    const lpEnd = () => clearTimeout(lp);
+    cc.addEventListener("pointerdown", () => { lp = setTimeout(() => { mailMode(true); ph.blur(); setTimeout(() => ph.focus(), 50); }, 700); });
+    ["pointerup", "pointerleave", "pointercancel"].forEach(ev => cc.addEventListener(ev, lpEnd));
+  }
   if (q("#aForgot")) q("#aForgot").onclick = async () => {
     if (!byEmail) {
       const p = normPhone(q("#aPhone").value);
@@ -298,7 +303,7 @@ function renderAuth(el, mode) {
       err.innerHTML = `${t("لاستعادة كلمة المرور راسلنا واتساب من رقمك المسجّل، ونعيد ضبطها لك.")} <a href="${waLink(C.supportWhatsapp, t("السلام عليكم، نسيت كلمة المرور لحسابي في {app}. رقمي: {p}", { app: APP, p: p ? "0" + p : "" }))}" target="_blank" rel="noopener">${t("راسلنا الآن")}</a>`;
       return;
     }
-    const email = q("#aEmail").value.trim();
+    const email = ph.value.trim();
     if (!/^\S+@\S+\.\S+$/.test(email)) { err.textContent = t("اكتب بريدك أولاً ثم اضغط «نسيت كلمة المرور»."); return; }
     const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
     err.className = error ? "err" : "err ok";
@@ -310,7 +315,7 @@ function renderAuth(el, mode) {
     const phone = normPhone(q("#aPhone").value);
     let email;
     if (byEmail) {
-      email = q("#aEmail").value.trim();
+      email = ph.value.trim();
       if (!/^\S+@\S+\.\S+$/.test(email)) return err.textContent = t("اكتب بريداً إلكترونياً صحيحاً.");
     } else {
       if (!/^5\d{8}$/.test(phone)) return err.textContent = t("رقم الجوال يبدأ بـ 5 ويتكون من ٩ أرقام.");
@@ -544,7 +549,6 @@ function providerBox(id) {
         <a class="btn wa sm" href="${waLink(intl(p.phone), t("السلام عليكم، وصلت لك من موقع {app}", { app: APP }))}" target="_blank" rel="noopener">${ico("wa")}${t("واتساب")}</a>
         <a class="btn ghost sm" href="tel:+${intl(p.phone)}">${ico("phone")}${t("اتصال")}</a>
       </div>
-      <p class="center muted small">${phoneHtml(p.phone)}</p>
       ${priceHint()}
       ${self ? "" : `<div class="linkrow"><button type="button" class="linkbtn" id="pReport">${ico("flag")}${t("إبلاغ عن مقدم الخدمة")}</button><button type="button" class="linkbtn" id="pHide">${ico("eyeoff")}${t("إخفاء من الخريطة")}</button></div>`}
     </div>`, m => {

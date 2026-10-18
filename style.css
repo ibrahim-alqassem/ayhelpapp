@@ -317,3 +317,4 @@ textarea{width:100%;box-sizing:border-box;font:inherit;resize:vertical}
 
 .textlink.small{font-size:13px;font-weight:500;color:var(--muted)}
 .textlink.center{display:block;margin:4px auto 0}
+#aCC{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}

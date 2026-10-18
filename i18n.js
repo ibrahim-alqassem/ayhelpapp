@@ -400,5 +400,6 @@ window.I18N_EN = {
 "رقم الجوال أو كلمة المرور غير صحيحة.": "Wrong mobile number or password.",
 "هذا الرقم مسجّل من قبل. سجّل الدخول بدلاً من ذلك.": "This number is already registered. Sign in instead.",
 "رقم الدخول": "Login number",
-"رقمك هو اسم الدخول. لتغييره تواصل معنا.": "Your number is your login. Contact us to change it."
+"رقمك هو اسم الدخول. لتغييره تواصل معنا.": "Your number is your login. Contact us to change it.",
+"سجّل برقم جوالك وكلمة مرور خلال ثوانٍ": "Sign up with your mobile number and a password in seconds"
 };
