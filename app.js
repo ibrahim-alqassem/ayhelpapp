@@ -283,17 +283,22 @@ function renderAuth(el, mode) {
   q("#aBack").onclick = goBack;
   q("#aSwitch").onclick = () => renderAuth(el, signup ? "login" : "signup");
   if (q("#aTerms")) q("#aTerms").onclick = termsBox;
-  if (q("#aPhone")) q("#aPhone").oninput = e => e.target.value = toEn(e.target.value).replace(/\D/g, "").slice(0, 10);
   /* دخول خفي بالبريد (للمدير والمراجع): خانة الجوال تقبل البريد إذا كُتب أو لُصق فيها «@»،
      والضغط المطوّل على +966 يفتح لوحة مفاتيح البريد */
   let byEmail = false;
   const ph = q("#aPhone"), cc = q("#aCC");
   const mailMode = on => { byEmail = on; cc.hidden = on; ph.classList.toggle("ltr", on); ph.inputMode = on ? "email" : "numeric"; };
-  if (!signup) {
-    ph.addEventListener("input", () => { if (ph.value.includes("@") !== byEmail) mailMode(ph.value.includes("@")); });
+  if (signup) ph.addEventListener("input", () => { ph.value = toEn(ph.value).replace(/\D/g, "").slice(0, 10); });
+  else {
+    let forced = false;
+    ph.addEventListener("input", () => {
+      if (!ph.value) forced = false;
+      const m = forced || /[A-Za-z@]/.test(ph.value);
+      if (m !== byEmail) mailMode(m);
+    });
     let lp = null;
     const lpEnd = () => clearTimeout(lp);
-    cc.addEventListener("pointerdown", () => { lp = setTimeout(() => { mailMode(true); ph.blur(); setTimeout(() => ph.focus(), 50); }, 700); });
+    cc.addEventListener("pointerdown", () => { lp = setTimeout(() => { forced = true; mailMode(true); ph.blur(); setTimeout(() => ph.focus(), 50); }, 700); });
     ["pointerup", "pointerleave", "pointercancel"].forEach(ev => cc.addEventListener(ev, lpEnd));
   }
   if (q("#aForgot")) q("#aForgot").onclick = async () => {
