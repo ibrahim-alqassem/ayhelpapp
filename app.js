@@ -242,6 +242,12 @@ function needLogin(why, then, role) {
 
 /* ===== التسجيل والدخول (طبقة فوق الموقع) ===== */
 let authOpts = {};
+/* الدخول برقم الجوال: يُحفظ الرقم داخلياً كبريد مخفي (بدون رسائل تحقق) */
+const PHONE_DOMAIN = "u.ayhelpapp.com";
+const normPhone = v => { let d = toEn(String(v || "")).replace(/\D/g, ""); d = d.replace(/^00966/, "").replace(/^966/, "").replace(/^0/, ""); return d; };
+const phoneEmail = p => `966${p}@${PHONE_DOMAIN}`;
+const isPhoneAcct = () => (session?.user?.email || "").endsWith("@" + PHONE_DOMAIN);
+const loginId = () => isPhoneAcct() ? "+966 " + session.user.email.split("@")[0].replace(/^966/, "").replace(/^(\d{2})(\d{3})(\d{4})$/, "$1 $2 $3") : (session?.user?.email || "");
 function openAuth(mode = "signup", opts = {}) {
   authOpts = opts; closeDrawer();
   app.querySelector(".modal")?.remove();
@@ -257,20 +263,20 @@ function renderAuth(el, mode) {
     <div class="brandmark"><img class="logoimg" src="icon-192.png" alt=""><div><h1>${APP}</h1><p>${TAG}</p></div></div>
     ${o.why ? `<div class="notebox">${ico("info")}<span>${esc(o.why)}</span></div>` : ""}
     <h2>${signup ? t("أنشئ حسابك مجاناً") : t("مرحباً بعودتك!")}</h2>
-    <p class="sub">${signup ? t("سجّل ببريدك الإلكتروني، ورقم جوالك للتواصل فقط") : t("سجّل الدخول ببريدك الإلكتروني")}</p>
+    <p class="sub">${signup ? t("سجّل برقم جوالك وكلمة مرور، بدون رسائل تحقق") : t("ادخل برقم جوالك وكلمة المرور")}</p>
     <form class="form" id="aForm" novalidate>
       ${signup ? `<div class="in"><label>${t("أريد أن")}</label><div class="seg2">
         <label><input type="radio" name="role" value="customer" ${role === "customer" ? "checked" : ""}><span>${ico("search")}${t("أطلب خدمة")}</span></label>
         <label><input type="radio" name="role" value="provider" ${role === "provider" ? "checked" : ""}><span>${ico("store")}${t("أقدّم خدمة")}</span></label></div>
         <div class="hint">${t("الحساب واحد للحالتين، وتستطيع عرض خدمتك لاحقاً في أي وقت.")}</div></div>
       <div class="in"><label for="aName">${t("الاسم")}</label><input id="aName" autocomplete="name" placeholder="${t("اسمك أو اسم نشاطك")}"></div>` : ""}
-      <div class="in"><label for="aEmail">${t("البريد الإلكتروني")}</label><input id="aEmail" type="email" class="ltr" autocomplete="email" placeholder="name@example.com"></div>
-      ${signup ? `<div class="in"><label for="aPhone">${t("رقم الجوال للتواصل")}</label><div class="phone"><span>+966</span><input id="aPhone" inputmode="numeric" maxlength="10" placeholder="5XXXXXXXX" autocomplete="tel-national"></div><div class="hint">${t("يظهر لمن تتعامل معه للاتصال أو واتساب. لا نرسل رسائل نصية.")}</div></div>` : ""}
+      <div class="in" id="phoneIn"><label for="aPhone">${t("رقم الجوال")}</label><div class="phone"><span>+966</span><input id="aPhone" inputmode="numeric" maxlength="10" placeholder="5XXXXXXXX" autocomplete="tel-national"></div><div class="hint">${signup ? t("رقمك هو اسم الدخول، ويظهر لمن تتعامل معه للاتصال أو واتساب.") : ""}</div></div>
+      ${signup ? "" : `<div class="in" id="emailIn" hidden><label for="aEmail">${t("البريد الإلكتروني")}</label><input id="aEmail" type="email" class="ltr" autocomplete="email" placeholder="name@example.com"></div>`}
       <div class="in"><label for="aPass">${t("كلمة المرور")}</label><input id="aPass" type="password" class="ltr" autocomplete="${signup ? "new-password" : "current-password"}" placeholder="${t("٦ أحرف أو أرقام على الأقل")}"></div>
       <div class="err" id="aErr" role="alert"></div>
       ${signup ? `<p class="terms">${t("بالمتابعة، أوافق على")} <button type="button" id="aTerms">${t("الشروط والأحكام وسياسة الخصوصية")}</button></p>` : ""}
       <button class="btn" type="submit" id="aBtn">${signup ? t("إنشاء الحساب") : t("دخول")}</button>
-      ${signup ? "" : `<button type="button" class="textlink center" id="aForgot">${t("نسيت كلمة المرور؟")}</button>`}
+      ${signup ? "" : `<button type="button" class="textlink center" id="aForgot">${t("نسيت كلمة المرور؟")}</button><button type="button" class="textlink center small" id="aUseEmail">${t("سجّلت سابقاً بالبريد الإلكتروني؟ ادخل به")}</button>`}
     </form>
     <div class="switchbox">${signup ? t("لديك حساب؟") : t("ليس لديك حساب؟")} <button type="button" class="btn ghost sm" id="aSwitch">${signup ? t("سجّل الدخول") : t("أنشئ حساباً جديداً")}</button></div>
   </div>`;
@@ -279,7 +285,19 @@ function renderAuth(el, mode) {
   q("#aSwitch").onclick = () => renderAuth(el, signup ? "login" : "signup");
   if (q("#aTerms")) q("#aTerms").onclick = termsBox;
   if (q("#aPhone")) q("#aPhone").oninput = e => e.target.value = toEn(e.target.value).replace(/\D/g, "").slice(0, 10);
+  let byEmail = false;
+  if (q("#aUseEmail")) q("#aUseEmail").onclick = () => {
+    byEmail = !byEmail; q("#emailIn").hidden = !byEmail; q("#phoneIn").hidden = byEmail;
+    q("#aUseEmail").textContent = byEmail ? t("ادخل برقم الجوال") : t("سجّلت سابقاً بالبريد الإلكتروني؟ ادخل به");
+    err.textContent = ""; (byEmail ? q("#aEmail") : q("#aPhone")).focus();
+  };
   if (q("#aForgot")) q("#aForgot").onclick = async () => {
+    if (!byEmail) {
+      const p = normPhone(q("#aPhone").value);
+      err.className = "err ok";
+      err.innerHTML = `${t("لاستعادة كلمة المرور راسلنا واتساب من رقمك المسجّل، ونعيد ضبطها لك.")} <a href="${waLink(C.supportWhatsapp, t("السلام عليكم، نسيت كلمة المرور لحسابي في {app}. رقمي: {p}", { app: APP, p: p ? "0" + p : "" }))}" target="_blank" rel="noopener">${t("راسلنا الآن")}</a>`;
+      return;
+    }
     const email = q("#aEmail").value.trim();
     if (!/^\S+@\S+\.\S+$/.test(email)) { err.textContent = t("اكتب بريدك أولاً ثم اضغط «نسيت كلمة المرور»."); return; }
     const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
@@ -288,15 +306,22 @@ function renderAuth(el, mode) {
   };
   q("#aForm").onsubmit = async e => {
     e.preventDefault(); err.className = "err"; err.textContent = "";
-    const email = q("#aEmail").value.trim(), pass = q("#aPass").value, btn = q("#aBtn"), label = btn.textContent;
-    if (!/^\S+@\S+\.\S+$/.test(email)) return err.textContent = t("اكتب بريداً إلكترونياً صحيحاً.");
+    const pass = q("#aPass").value, btn = q("#aBtn"), label = btn.textContent;
+    const phone = normPhone(q("#aPhone").value);
+    let email;
+    if (byEmail) {
+      email = q("#aEmail").value.trim();
+      if (!/^\S+@\S+\.\S+$/.test(email)) return err.textContent = t("اكتب بريداً إلكترونياً صحيحاً.");
+    } else {
+      if (!/^5\d{8}$/.test(phone)) return err.textContent = t("رقم الجوال يبدأ بـ 5 ويتكون من ٩ أرقام.");
+      email = phoneEmail(phone);
+    }
     if (pass.length < 6) return err.textContent = t("كلمة المرور ٦ أحرف أو أرقام على الأقل.");
     let res, chosen = "customer";
     if (signup) {
-      const name = q("#aName").value.trim(), phone = q("#aPhone").value.replace(/^0/, "");
+      const name = q("#aName").value.trim();
       chosen = el.querySelector("input[name=role]:checked")?.value || "customer";
       if (name.length < 2) return err.textContent = t("اكتب اسمك.");
-      if (!/^5\d{8}$/.test(phone)) return err.textContent = t("رقم الجوال يبدأ بـ 5 ويتكون من ٩ أرقام.");
       btn.disabled = true; btn.textContent = t("لحظة…");
       res = await sb.auth.signUp({ email, password: pass, options: { data: { name, phone } } });
     } else {
@@ -306,8 +331,8 @@ function renderAuth(el, mode) {
     btn.disabled = false; btn.textContent = label;
     if (res.error) {
       const m = res.error.message || "";
-      err.textContent = /Invalid login/i.test(m) ? t("البريد أو كلمة المرور غير صحيحة.")
-        : /registered|exists/i.test(m) ? t("هذا البريد مسجّل من قبل. سجّل الدخول بدلاً من ذلك.")
+      err.textContent = /Invalid login/i.test(m) ? (byEmail ? t("البريد أو كلمة المرور غير صحيحة.") : t("رقم الجوال أو كلمة المرور غير صحيحة."))
+        : /registered|exists/i.test(m) ? (byEmail ? t("هذا البريد مسجّل من قبل. سجّل الدخول بدلاً من ذلك.") : t("هذا الرقم مسجّل من قبل. سجّل الدخول بدلاً من ذلك."))
         : /rate|too many/i.test(m) ? t("محاولات كثيرة. انتظر دقيقة ثم حاول.")
         : /confirm/i.test(m) ? t("فعّل حسابك من الرابط المرسل لبريدك أولاً.")
         : t("تعذّر الإكمال: ") + m;
@@ -368,7 +393,7 @@ function renderNav() {
 }
 function renderDrawer() {
   const d = $("drawer"); if (!d) return;
-  const name = me?.name || t("زائر"), sub = session ? session.user.email : t("تصفح بدون حساب");
+  const name = me?.name || t("زائر"), sub = session ? loginId() : t("تصفح بدون حساب");
   d.innerHTML = `<button class="iconbtn" id="closeDrawer" aria-label="${t("إغلاق")}" style="color:inherit">${ico("x")}</button>
     <div class="who"><div class="avatar">${esc((name.trim()[0]) || "؟")}</div><b>${esc(name)}</b><span>${esc(sub)}</span></div>
     <nav>
@@ -733,7 +758,7 @@ const PAGES = {
       </div>
       <div class="field"><label>${t("الاسم")}</label><div class="v">${ico("user")}<span>${esc(u.name)}</span></div></div>
       <div class="field"><label>${t("الجوال")}</label><div class="v">${ico("phone")}<span>${phoneHtml(u.phone)}</span></div></div>
-      <div class="field"><label>${t("البريد الإلكتروني")}</label><div class="v">${ico("mail")}<span>${esc(session.user.email)}</span></div></div>
+      <div class="field"><label>${isPhoneAcct() ? t("رقم الدخول") : t("البريد الإلكتروني")}</label><div class="v">${ico(isPhoneAcct() ? "phone" : "mail")}<span dir="ltr">${esc(loginId())}</span></div></div>
       <div class="pad form">
         <div class="card brand"><b>${u.is_provider ? (u.active !== false ? t("خدمتك ظاهرة على الخريطة") : t("خدمتك مخفية حالياً")) : t("تقدّم خدمة؟")}</b><span class="muted">${u.is_provider ? (u.services || []).map(sName).join(t("، ")) + (u.hours ? " · " + hoursText(u.hours) : "") : t("سجّلها مجاناً وتظهر لمن يحتاجها قريباً منك.")}</span><button class="btn sm" data-go="mystore">${u.is_provider ? t("إدارة خدمتي") : t("سجّل خدمتك")}</button></div>
         <button class="btn ghost" id="editProfile">${t("تعديل بياناتي")}</button>
@@ -878,8 +903,8 @@ function editProfile() {
   const u = me;
   modal(`<h3>${ico("user")}${t("تعديل بياناتي")}</h3><form class="form" id="eForm" novalidate>
     <div class="in"><label for="eName">${t("الاسم")}</label><input id="eName" value="${esc(u.name)}"></div>
-    <div class="in"><label for="ePhone">${t("رقم الجوال للتواصل")}</label><div class="phone"><span>+966</span><input id="ePhone" inputmode="numeric" maxlength="10" value="${esc(String(u.phone || "").replace(/^966/, ""))}"></div></div>
-    <div class="in"><label>${t("البريد الإلكتروني")}</label><input value="${esc(session.user.email)}" class="ltr" disabled></div>
+    <div class="in"><label for="ePhone">${t("رقم الجوال للتواصل")}</label><div class="phone"><span>+966</span><input id="ePhone" inputmode="numeric" maxlength="10" value="${esc(String(u.phone || "").replace(/^966/, ""))}" ${isPhoneAcct() ? "disabled" : ""}></div>${isPhoneAcct() ? `<div class="hint">${t("رقمك هو اسم الدخول. لتغييره تواصل معنا.")}</div>` : ""}</div>
+    ${isPhoneAcct() ? "" : `<div class="in"><label>${t("البريد الإلكتروني")}</label><input value="${esc(session.user.email)}" class="ltr" disabled></div>`}
     <div class="err" id="eErr" role="alert"></div><button class="btn" type="submit">${t("حفظ")}</button></form>`, m => {
     m.querySelector("#eForm").onsubmit = async e => {
       e.preventDefault();

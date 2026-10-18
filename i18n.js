@@ -387,5 +387,18 @@ window.I18N_EN = {
 "فعّل الإشعارات": "Turn on notifications",
 "ليصلك الطلب الجديد وتحديثات طلباتك فوراً، حتى والجوال مقفل.": "Get new requests and updates instantly, even when your phone is locked.",
 "لاحقاً": "Later",
-"تمت إضافة التطبيق للشاشة الرئيسية": "Added to your home screen"
+"تمت إضافة التطبيق للشاشة الرئيسية": "Added to your home screen",
+"سجّل برقم جوالك وكلمة مرور، بدون رسائل تحقق": "Sign up with your mobile number and a password, no verification codes",
+"ادخل برقم جوالك وكلمة المرور": "Sign in with your mobile number and password",
+"رقم الجوال": "Mobile number",
+"رقمك هو اسم الدخول، ويظهر لمن تتعامل معه للاتصال أو واتساب.": "Your number is your login, and is shown to people you deal with for calls or WhatsApp.",
+"سجّلت سابقاً بالبريد الإلكتروني؟ ادخل به": "Signed up with email before? Sign in with email",
+"ادخل برقم الجوال": "Sign in with mobile number",
+"لاستعادة كلمة المرور راسلنا واتساب من رقمك المسجّل، ونعيد ضبطها لك.": "To recover your password, message us on WhatsApp from your registered number and we’ll reset it for you.",
+"السلام عليكم، نسيت كلمة المرور لحسابي في {app}. رقمي: {p}": "Hello, I forgot the password for my {app} account. My number: {p}",
+"راسلنا الآن": "Message us now",
+"رقم الجوال أو كلمة المرور غير صحيحة.": "Wrong mobile number or password.",
+"هذا الرقم مسجّل من قبل. سجّل الدخول بدلاً من ذلك.": "This number is already registered. Sign in instead.",
+"رقم الدخول": "Login number",
+"رقمك هو اسم الدخول. لتغييره تواصل معنا.": "Your number is your login. Contact us to change it."
 };

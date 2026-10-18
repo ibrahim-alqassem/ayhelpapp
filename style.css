@@ -314,3 +314,6 @@ textarea{width:100%;box-sizing:border-box;font:inherit;resize:vertical}
 .swipe.open-r .row{transform:translateX(88px)}
 .swipe.open-l .row{transform:translateX(-88px)}
 .swipe.gone{max-height:0;opacity:0}
+
+.textlink.small{font-size:13px;font-weight:500;color:var(--muted)}
+.textlink.center{display:block;margin:4px auto 0}
