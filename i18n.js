@@ -1,6 +1,14 @@
 // الترجمة الإنجليزية — المفتاح هو النص العربي كما يظهر في app.js
 window.I18N_EN = {
 "أي هلب": "Ay Help",
+  "اسحب الإشعار يميناً أو يساراً، أو اضغط عليه مطوّلاً لحذفه": "Swipe a notification left or right, or long-press it, to delete",
+  "حذف": "Delete",
+  "مسح كل الإشعارات": "Clear all notifications",
+  "مسح كل الإشعارات؟": "Clear all notifications?",
+  "ستُحذف كل إشعاراتك نهائياً، ولن تتأثر طلباتك.": "All your notifications will be permanently deleted. Your requests won’t be affected.",
+  "مسح الكل": "Clear all",
+  "تعذّر الحذف، حاول مرة أخرى.": "Couldn’t delete, please try again.",
+  "تم مسح الإشعارات": "Notifications cleared",
   "ثبّت «{app}» على جوالك": "Install “{app}” on your phone",
   "مساعدتك على الطريق وفي البيت، على بُعد لمسة.": "Help on the road and at home, one tap away.",
   "يفتح فوراً من الشاشة الرئيسية مثل أي تطبيق": "Opens instantly from your home screen like any app",

@@ -711,7 +711,9 @@ const copyRow = (l, v) => `<div class="copyrow"><span class="t"><span>${l}</span
 const PAGES = {
   notes() {
     if (!notes.length) return `<div class="empty">${ico("bell")}<b>${t("لا توجد إشعارات بعد")}</b><span>${t("ستظهر هنا الطلبات الجديدة وتحديثاتها")}</span></div>`;
-    return `<div class="list">${notes.map(n => `<button class="row ${n.read ? "" : "unread"}" data-req="${n.request_id || ""}" data-rep="${n.report_id || ""}"><span class="ic">${ico("bell")}</span><span class="t"><b>${esc(noteTitle(n))}</b>${n.body ? `<span>${esc(n.body)}</span>` : ""}</span><span class="end">${fmtDate(n.created_at)}</span></button>`).join("")}</div>`;
+    return `<p class="swipehint">${t("اسحب الإشعار يميناً أو يساراً، أو اضغط عليه مطوّلاً لحذفه")}</p>
+    <div class="list">${notes.map(n => `<div class="swipe" data-nid="${n.id}"><button class="sdel l" aria-label="${t("حذف")}">${ico("trash")}</button><button class="sdel r" aria-label="${t("حذف")}">${ico("trash")}</button><button class="row ${n.read ? "" : "unread"}" data-req="${n.request_id || ""}" data-rep="${n.report_id || ""}"><span class="ic">${ico("bell")}</span><span class="t"><b>${esc(noteTitle(n))}</b>${n.body ? `<span>${esc(n.body)}</span>` : ""}</span><span class="end">${fmtDate(n.created_at)}</span></button></div>`).join("")}</div>
+    <div class="center"><button class="linkbtn" id="clearNotes">${ico("trash")}${t("مسح كل الإشعارات")}</button></div>`;
   },
   orders() {
     const isP = me?.is_provider || inReqs.length;
@@ -771,7 +773,37 @@ const PAGES = {
 };
 const BIND = {
   notes(v) {
-    v.querySelectorAll("[data-req]").forEach(b => b.onclick = () => { const r = +b.dataset.rep, id = +b.dataset.req; if (r) adminReport(r); else if (id) reqDetails(id); });
+    v.querySelectorAll("[data-req]").forEach(b => b.onclick = () => {
+      const w = b.closest(".swipe"); if (w && w.className.includes("open")) { w.className = "swipe"; return; }
+      const r = +b.dataset.rep, id = +b.dataset.req; if (r) adminReport(r); else if (id) reqDetails(id);
+    });
+    v.querySelectorAll(".swipe").forEach(w => {
+      const row = w.querySelector(".row"); let x0 = null, y0 = 0, dx = 0, lp = null;
+      const closeOthers = () => v.querySelectorAll(".swipe.open-l,.swipe.open-r").forEach(o => { if (o !== w) o.className = "swipe"; });
+      row.addEventListener("touchstart", e => {
+        x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; dx = 0; row.style.transition = "none";
+        lp = setTimeout(() => { lp = null; x0 = null; row.style.transition = ""; row.style.transform = ""; closeOthers(); w.className = "swipe open-r"; navigator.vibrate?.(15); }, 550);
+      }, { passive: true });
+      row.addEventListener("touchmove", e => {
+        if (x0 == null) return;
+        dx = e.touches[0].clientX - x0; const dy = e.touches[0].clientY - y0;
+        if (Math.abs(dx) > 8 || Math.abs(dy) > 8) { clearTimeout(lp); lp = null; }
+        if (Math.abs(dy) > Math.abs(dx)) return;
+        row.style.transform = `translateX(${Math.max(-110, Math.min(110, dx))}px)`;
+      }, { passive: true });
+      row.addEventListener("touchend", () => {
+        clearTimeout(lp); lp = null; if (x0 == null) return; x0 = null;
+        row.style.transition = ""; row.style.transform = "";
+        if (dx > 60) { closeOthers(); w.className = "swipe open-r"; } else if (dx < -60) { closeOthers(); w.className = "swipe open-l"; }
+      });
+      row.addEventListener("contextmenu", e => { e.preventDefault(); closeOthers(); w.className = "swipe open-r"; });
+      w.querySelectorAll(".sdel").forEach(d => d.onclick = () => deleteNote(+w.dataset.nid, w));
+    });
+    v.querySelector("#clearNotes")?.addEventListener("click", () => confirmBox(t("مسح كل الإشعارات؟"), t("ستُحذف كل إشعاراتك نهائياً، ولن تتأثر طلباتك."), t("مسح الكل"), async () => {
+      const { error } = await sb.from("notifications").delete().eq("user_id", session.user.id);
+      if (error) return toast(t("تعذّر الحذف، حاول مرة أخرى."));
+      notes = []; renderNav(); renderTop(); renderPage(); toast(t("تم مسح الإشعارات"));
+    }, true));
     if (unread()) setTimeout(markAllRead, 1500);
   },
   orders(v) {
@@ -868,6 +900,12 @@ function modal(html, after) {
   m.innerHTML = `<div class="box" role="dialog" aria-modal="true"><div class="mhead"><div class="grip"></div><button class="mclose" data-close aria-label="${t("إغلاق")}">${ico("x")}</button></div>${html}</div>`;
   m.onclick = e => { if (e.target === m || e.target.closest("[data-close]")) goBack(); };
   app.appendChild(m); after && after(m); return m;
+}
+async function deleteNote(id, el) {
+  el?.classList.add("gone");
+  const { error } = await sb.from("notifications").delete().eq("id", id);
+  if (error) { el?.classList.remove("gone"); return toast(t("تعذّر الحذف، حاول مرة أخرى.")); }
+  setTimeout(() => { notes = notes.filter(n => n.id !== id); renderNav(); renderTop(); if (tab === "notes") renderPage(); }, 220);
 }
 function confirmBox(title, body, label, fn, danger) {
   modal(`<h3>${title}</h3><p class="lead">${body}</p><div class="form"><button class="btn ${danger ? "danger" : ""}" id="okBtn">${label}</button><button class="btn ghost" data-close>${t("إلغاء")}</button></div>`,

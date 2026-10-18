@@ -303,3 +303,14 @@ textarea{width:100%;box-sizing:border-box;font:inherit;resize:vertical}
 .replist{margin:0 0 12px;padding-inline-start:20px;font-size:13px;display:grid;gap:4px}
 .pill.on{background:var(--brand-soft);color:var(--brand)}
 .pill.off{background:#FDECEC;color:var(--danger)}
+
+/* v12 حذف الإشعارات بالسحب */
+.swipehint{font-size:12px;color:var(--muted);text-align:center;margin:10px 16px 4px}
+.swipe{position:relative;overflow:hidden;transition:max-height .22s,opacity .22s;max-height:200px}
+.swipe .row{position:relative;z-index:1;transition:transform .2s ease}
+.swipe .sdel{position:absolute;top:0;bottom:0;width:88px;border:0;background:var(--danger);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.swipe .sdel svg{width:24px;height:24px}
+.swipe .sdel.l{left:0}.swipe .sdel.r{right:0}
+.swipe.open-r .row{transform:translateX(88px)}
+.swipe.open-l .row{transform:translateX(-88px)}
+.swipe.gone{max-height:0;opacity:0}
