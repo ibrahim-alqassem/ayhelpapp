@@ -42,35 +42,35 @@
   ],
   "screenshots": [
     {
-      "src": "screenshots/s1.jpg?v=2",
+      "src": "screenshots/s1.jpg?v=3",
       "sizes": "540x960",
       "type": "image/jpeg",
       "form_factor": "narrow",
       "label": "كل خدمات الطريق والمنزل"
     },
     {
-      "src": "screenshots/s2.jpg?v=2",
+      "src": "screenshots/s2.jpg?v=3",
       "sizes": "540x960",
       "type": "image/jpeg",
       "form_factor": "narrow",
       "label": "اختر الخدمة"
     },
     {
-      "src": "screenshots/s3.jpg?v=2",
+      "src": "screenshots/s3.jpg?v=3",
       "sizes": "540x960",
       "type": "image/jpeg",
       "form_factor": "narrow",
       "label": "مقدمو الخدمة حولك"
     },
     {
-      "src": "screenshots/s4.jpg?v=2",
+      "src": "screenshots/s4.jpg?v=3",
       "sizes": "540x960",
       "type": "image/jpeg",
       "form_factor": "narrow",
       "label": "تواصل مباشرة"
     },
     {
-      "src": "screenshots/s5.jpg?v=2",
+      "src": "screenshots/s5.jpg?v=3",
       "sizes": "540x960",
       "type": "image/jpeg",
       "form_factor": "narrow",
