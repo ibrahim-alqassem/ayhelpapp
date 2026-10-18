@@ -83,6 +83,8 @@ const IC = {
   chat: '<path d="M21 12a8 8 0 0 1-12 7l-5 1 1-4.5A8 8 0 1 1 21 12z"/>',
   heart: '<path d="M12 20s-7-4.5-9-9a4.5 4.5 0 0 1 9-2 4.5 4.5 0 0 1 9 2c-2 4.5-9 9-9 9z"/>',
   lang: '<path d="M3 5h10M8 3v2M5 9c1 3 4 5 6 6M11 5c-1 5-4 8-7 9"/><path d="m13 21 4-9 4 9M14.5 18h5"/>',
+  flag: '<path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/>',
+  eyeoff: '<path d="M3 3l18 18"/><path d="M10.6 6.1A9.8 9.8 0 0 1 12 6c5 0 9 6 9 6a17 17 0 0 1-3.2 3.7M6.1 7.6C3.9 9.2 3 12 3 12s4 6 9 6c1.3 0 2.5-.3 3.6-.8"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
   shield: '<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/>',
   trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>', moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
   phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>',
@@ -197,7 +199,7 @@ async function loadMe() {
   }
 }
 async function loadProviders() {
-  const { data, error } = await sb.from("profiles").select("id,name,phone,services,bio,district,lat,lng,active,is_provider,hours,price_note").eq("is_provider", true).eq("active", true);
+  const { data, error } = await sb.from("profiles").select("id,name,phone,services,bio,district,lat,lng,active,is_provider,hours,price_note").eq("is_provider", true).eq("active", true).eq("suspended", false);
   if (!error) { providers = data || []; drawMarkers(); if (tab === "home") renderSheet(); }
 }
 async function loadRequests() {
@@ -415,8 +417,9 @@ function drawMarkers() {
     L.marker([p.lat, p.lng], { icon: mkIcon(svc(first).icon, openNow(p.hours) === false), title: p.name }).on("click", () => providerBox(p.id)).addTo(markers);
   });
 }
+let hiddenProv = store.get("hidden", []);
 function shownProviders() {
-  const list = providers.filter(p => p.lat != null && (!filter || (p.services || []).includes(filter)));
+  const list = providers.filter(p => p.lat != null && !hiddenProv.includes(p.id) && (!filter || (p.services || []).includes(filter)));
   const ref = myPos || (map ? [map.getCenter().lat, map.getCenter().lng] : [24.7, 46.7]);
   return list.map(p => ({ ...p, dist: dist(ref, [p.lat, p.lng]), open: openNow(p.hours) !== false }))
     .sort((a, b) => (b.open - a.open) || (a.dist - b.dist));
@@ -509,12 +512,45 @@ function providerBox(id) {
       </div>
       <p class="center muted small">${phoneHtml(p.phone)}</p>
       ${priceHint()}
+      ${self ? "" : `<div class="linkrow"><button type="button" class="linkbtn" id="pReport">${ico("flag")}${t("إبلاغ عن مقدم الخدمة")}</button><button type="button" class="linkbtn" id="pHide">${ico("eyeoff")}${t("إخفاء من الخريطة")}</button></div>`}
     </div>`, m => {
+    m.querySelector("#pReport")?.addEventListener("click", () => {
+      if (needLogin(t("سجّل دخولك لترسل البلاغ، حتى نتأكد أن البلاغات حقيقية."))) return;
+      reportBox(p);
+    });
+    m.querySelector("#pHide")?.addEventListener("click", () => {
+      if (!hiddenProv.includes(p.id)) hiddenProv.push(p.id);
+      store.set("hidden", hiddenProv); m.remove(); drawMarkers(); renderSheet();
+      toast(t("أخفينا مقدم الخدمة من خريطتك. تستطيع إظهاره من الإعدادات."));
+    });
     m.querySelector("#pReq")?.addEventListener("click", () => {
       if (needLogin(t("سجّل حساباً مجانياً لترسل الطلب وتتابع حالته في الإشعارات. ويمكنك التواصل مع مقدم الخدمة مباشرة بدون حساب."), () => requestForm(p))) return;
       requestForm(p);
     });
     m.querySelector("#pEdit")?.addEventListener("click", () => providerSetup());
+  });
+}
+const REPORT_REASONS = ["معلومات أو رقم غير صحيح", "احتيال أو طلب مبالغ مقدماً", "سلوك أو ألفاظ مسيئة", "محتوى غير لائق", "لم يعد يقدّم الخدمة", "سبب آخر"];
+function reportBox(p) {
+  modal(`<h3>${ico("flag")}${t("إبلاغ عن {name}", { name: esc(p.name) })}</h3>
+    <p class="lead">${t("يصل البلاغ لإدارة التطبيق وتتم مراجعته. لا يرى مقدم الخدمة اسمك.")}</p>
+    <div class="form">
+      <div class="reasons">${REPORT_REASONS.map((r, i) => `<label class="reason"><input type="radio" name="rr" value="${r}" ${i === 0 ? "checked" : ""}><span>${t(r)}</span></label>`).join("")}</div>
+      <div class="in"><label for="rpDet">${t("تفاصيل")} <span class="opt">${t("(اختياري)")}</span></label><textarea id="rpDet" maxlength="300" rows="3" placeholder="${t("اكتب ما حدث باختصار")}"></textarea></div>
+      <div class="err" id="rpErr" role="alert"></div>
+      <button class="btn" id="rpSend">${ico("flag")}${t("إرسال البلاغ")}</button>
+      <button class="btn ghost" data-close>${t("إلغاء")}</button>
+    </div>`, m => {
+    m.querySelector("#rpSend").onclick = async e => {
+      const b = e.currentTarget; b.disabled = true;
+      const reason = m.querySelector("input[name=rr]:checked").value;
+      const details = m.querySelector("#rpDet").value.trim() || null;
+      const { error } = await sb.from("reports").insert({ provider_id: p.id, reason, details });
+      b.disabled = false;
+      if (error && !/duplicate|unique/i.test(error.message)) { m.querySelector("#rpErr").textContent = t("تعذّر إرسال البلاغ، حاول مرة أخرى."); return; }
+      m.remove();
+      toast(error ? t("سبق أن أبلغت عن مقدم الخدمة هذا، وبلاغك قيد المراجعة.") : t("شكراً لك، وصل البلاغ وسنراجعه."));
+    };
   });
 }
 function requestForm(p) {
@@ -670,6 +706,7 @@ const PAGES = {
       <button class="row" id="themeBtn"><span class="ic">${ico("moon")}</span><span class="t"><b>${t("المظهر")}</b></span><span class="end">${t(th)}</span></button>
       <button class="row" data-go="install"><span class="ic">${ico("plus")}</span><span class="t"><b>${t("أضف للشاشة الرئيسية")}</b><span>${t("افتح الموقع كتطبيق بضغطة")}</span></span>${ico("chev", "i flip")}</button>
       <button class="row" data-go="share"><span class="ic">${ico("share")}</span><span class="t"><b>${t("شارك الموقع")}</b><span>${t("أرسل نبذة ورابط الموقع لمن تعرف")}</span></span>${ico("chev", "i flip")}</button>
+      ${hiddenProv.length ? `<button class="row" id="unhideBtn"><span class="ic">${ico("eyeoff")}</span><span class="t"><b>${t("إظهار من أخفيتهم")}</b><span>${t("{n} مقدم خدمة مخفي من خريطتك", { n: hiddenProv.length })}</span></span>${ico("chev", "i flip")}</button>` : ""}
       <button class="row" data-go="terms"><span class="ic">${ico("shield")}</span><span class="t"><b>${t("الشروط والأحكام")}</b></span>${ico("chev", "i flip")}</button>
       <button class="row" data-tab="contact"><span class="ic">${ico("chat")}</span><span class="t"><b>${t("تواصل معنا")}</b></span>${ico("chev", "i flip")}</button>
       ${session ? `<button class="row" id="delBtn"><span class="ic dangerc">${ico("trash")}</span><span class="t"><b class="dangerc">${t("حذف الحساب")}</b></span>${ico("chev", "i flip")}</button>` : ""}
@@ -708,6 +745,7 @@ const BIND = {
     v.querySelector("#editProfile")?.addEventListener("click", editProfile);
   },
   settings(v) {
+    v.querySelector("#unhideBtn")?.addEventListener("click", () => { hiddenProv = []; store.set("hidden", []); drawMarkers(); renderPage(); toast(t("ظهر الجميع على الخريطة من جديد")); });
     // يعكس الحالة الفعلية للاشتراك في OneSignal (وليس إذن المتصفح فقط)
     OS(async OneSignal => { try { const s = v.querySelector("#notifySw"); if (s) s.setAttribute("aria-checked", pushOn() && !!OneSignal.User.PushSubscription.optedIn); } catch (x) {} });
     v.querySelector("#notifySw").onclick = async e => {
@@ -800,6 +838,7 @@ function termsBox() {
   modal(`<h3>${ico("shield")}${t("الشروط والأحكام")}</h3><div class="prose">
     <h4>${t("دور الموقع")}</h4><p>${t("«{app}» منصة تعرض مقدمي الخدمات وتوصلك بهم. الاتفاق على السعر والوقت وتنفيذ الخدمة بينك وبين مقدم الخدمة مباشرة، ولا يأخذ الموقع أي عمولة.", { app: APP })}</p>
     <h4>${t("مقدمو الخدمة")}</h4><p>${t("يلتزم مقدم الخدمة بصحة بياناته وموقعه وساعات عمله، وبإخفاء خدمته عند عدم توفره.")}</p>
+    <h4>${t("البلاغات")}</h4><p>${t("تستطيع الإبلاغ عن أي مقدم خدمة من صفحته، أو إخفاءه من خريطتك. نراجع البلاغات، ويُخفى مقدم الخدمة تلقائياً عند تكرار البلاغات عنه حتى تتم مراجعته.")}</p>
     <h4>${t("الخصوصية")}</h4><p>${t("نحفظ بريدك واسمك وجوالك. جوال مقدم الخدمة ظاهر للجميع للتواصل. جوالك كعميل يظهر فقط لمقدم الخدمة الذي تطلب منه.")}</p>
     <h4>${t("حذف الحساب")}</h4><p>${t("تستطيع حذف حسابك وكل بياناتك من الإعدادات في أي وقت.")}</p>
     <p><a href="privacy.html" target="_blank" rel="noopener">${t("سياسة الخصوصية كاملة")}</a> · <a href="delete-account.html" target="_blank" rel="noopener">${t("حذف الحساب")}</a></p></div><br><button class="btn" data-close>${t("فهمت")}</button>`);

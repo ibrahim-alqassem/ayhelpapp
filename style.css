@@ -279,3 +279,16 @@ svg.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stro
 .steps li::marker{color:var(--brand);font-weight:700}
 .kbd{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:8px;background:var(--brand-soft);color:var(--brand);vertical-align:middle}
 .kbd svg{width:18px;height:18px}
+
+/* v10 البلاغ */
+.linkrow{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;margin-top:4px}
+.linkbtn{display:inline-flex;align-items:center;gap:6px;background:none;border:0;padding:6px 2px;color:var(--muted);font:inherit;font-size:13px;cursor:pointer}
+.linkbtn svg{width:15px;height:15px}
+.linkbtn:hover{color:var(--ink)}
+.reasons{display:grid;gap:8px}
+.reason{position:relative;margin:0!important}
+.reason input{position:absolute;opacity:0}
+.reason span{display:block;padding:11px 14px;border:1.5px solid var(--line);border-radius:12px;background:var(--surface);font-size:14px;font-weight:600;color:var(--ink)}
+.reason input:checked+span{border-color:var(--brand);background:var(--brand-soft);color:var(--brand)}
+.reason input:focus-visible+span{outline:2px solid var(--amber)}
+textarea{width:100%;box-sizing:border-box;font:inherit;resize:vertical}
