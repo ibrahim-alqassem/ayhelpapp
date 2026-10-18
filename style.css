@@ -292,3 +292,14 @@ svg.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stro
 .reason input:checked+span{border-color:var(--brand);background:var(--brand-soft);color:var(--brand)}
 .reason input:focus-visible+span{outline:2px solid var(--amber)}
 textarea{width:100%;box-sizing:border-box;font:inherit;resize:vertical}
+
+/* v11 */
+.perks{list-style:none;padding:0;margin:4px 0 16px;display:grid;gap:10px}
+.perks li{display:flex;align-items:center;gap:10px;font-size:15px}
+.perks svg{width:20px;height:20px;flex:none;color:var(--brand)}
+.repcard{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:14px;margin:6px 0 12px;font-size:14px}
+.repcard b{color:var(--muted);font-weight:600;white-space:nowrap}
+.repcard span{min-width:0;overflow-wrap:anywhere}
+.replist{margin:0 0 12px;padding-inline-start:20px;font-size:13px;display:grid;gap:4px}
+.pill.on{background:var(--brand-soft);color:var(--brand)}
+.pill.off{background:#FDECEC;color:var(--danger)}

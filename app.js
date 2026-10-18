@@ -83,6 +83,7 @@ const IC = {
   chat: '<path d="M21 12a8 8 0 0 1-12 7l-5 1 1-4.5A8 8 0 1 1 21 12z"/>',
   heart: '<path d="M12 20s-7-4.5-9-9a4.5 4.5 0 0 1 9-2 4.5 4.5 0 0 1 9 2c-2 4.5-9 9-9 9z"/>',
   lang: '<path d="M3 5h10M8 3v2M5 9c1 3 4 5 6 6M11 5c-1 5-4 8-7 9"/><path d="m13 21 4-9 4 9M14.5 18h5"/>',
+  check: '<path d="m5 12 5 5 9-10"/>',
   flag: '<path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/>',
   eyeoff: '<path d="M3 3l18 18"/><path d="M10.6 6.1A9.8 9.8 0 0 1 12 6c5 0 9 6 9 6a17 17 0 0 1-3.2 3.7M6.1 7.6C3.9 9.2 3 12 3 12s4 6 9 6c1.3 0 2.5-.3 3.6-.8"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
   shield: '<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/>',
@@ -188,6 +189,14 @@ async function afterLogin() {
   if (tab !== "home") renderPage();
   loadRequests(); loadNotes(); subscribe();
   pushLogin(); setTimeout(maybePushPrompt, 2500);
+  openDeepLink();
+}
+/* فتح الطلب أو البلاغ مباشرة عند الضغط على الإشعار */
+function openDeepLink() {
+  const q = new URLSearchParams(location.search), r = +q.get("report"), id = +q.get("req");
+  if (!r && !id) return;
+  history.replaceState(history.state, "", location.pathname);
+  setTimeout(async () => { if (r) adminReport(r); else { await loadRequests(); reqDetails(id); } }, 600);
 }
 async function loadMe() {
   const { data } = await sb.from("profiles").select("*").eq("id", session.user.id).maybeSingle();
@@ -553,6 +562,36 @@ function reportBox(p) {
     };
   });
 }
+/* ===== مراجعة البلاغات (للإدارة فقط) ===== */
+async function adminReport(rid) {
+  const { data, error } = await sb.rpc("admin_report", { rid });
+  if (error || !data) { toast(t("هذا البلاغ متاح لإدارة التطبيق فقط.")); return; }
+  const r = data.report, p = data.provider || {}, all = data.reports || [];
+  const ST = { open: "قيد المراجعة", dismissed: "مغلق — لا مخالفة", actioned: "تم اتخاذ إجراء" };
+  modal(`<h3>${ico("flag")}${t("بلاغ عن {name}", { name: esc(p.name || "—") })}</h3>
+    <p class="lead">${fmtDate(r.created_at)} · ${t(ST[r.status] || r.status)}</p>
+    <div class="repcard"><b>${t("السبب")}</b><span>${esc(t(r.reason))}</span>
+      <b>${t("التفاصيل")}</b><span>${r.details ? esc(r.details) : `<i class="muted">${t("لم يكتب المُبلِّغ تفاصيل")}</i>`}</span>
+      <b>${t("المُبلِّغ")}</b><span>${esc(data.reporter || "—")}</span>
+      <b>${t("مقدم الخدمة")}</b><span>${esc(p.name || "")} · ${phoneHtml(p.phone || "")}${p.district ? " · " + esc(p.district) : ""}</span>
+      <b>${t("الحالة على الخريطة")}</b><span>${p.suspended ? `<span class="pill off">${t("مخفي")}</span>` : `<span class="pill on">${t("ظاهر")}</span>`}</span>
+    </div>
+    ${all.length > 1 ? `<p class="small muted">${t("كل البلاغات عنه ({n}):", { n: all.length })}</p><ul class="replist">${all.map(x => `<li>${esc(t(x.reason))}${x.details ? " — " + esc(x.details) : ""} <span class="muted">(${t(ST[x.status] || x.status)})</span></li>`).join("")}</ul>` : ""}
+    <div class="form">
+      ${p.suspended ? `<button class="btn" id="arShow">${ico("check")}${t("إعادة إظهاره على الخريطة")}</button>` : `<button class="btn danger" id="arHide">${ico("eyeoff")}${t("إخفاؤه من الخريطة")}</button>`}
+      ${r.status === "open" ? `<button class="btn ghost" id="arDismiss">${t("إغلاق البلاغ — لا توجد مخالفة")}</button>` : ""}
+      ${p.phone ? `<a class="btn wa sm" target="_blank" rel="noopener" href="${waLink(intl(p.phone), t("السلام عليكم، معك إدارة {app} بخصوص بلاغ عن خدمتك.", { app: APP }))}">${ico("wa")}${t("تواصل معه واتساب")}</a>` : ""}
+    </div>`, m => {
+    const act = async (fn, args, msg) => {
+      const { error } = await sb.rpc(fn, args);
+      if (error) { toast(t("تعذّر تنفيذ الإجراء")); return; }
+      m.remove(); toast(msg); loadProviders();
+    };
+    m.querySelector("#arHide")?.addEventListener("click", () => act("admin_set_suspended", { pid: p.id, val: true, rid }, t("أُخفي مقدم الخدمة من الخريطة")));
+    m.querySelector("#arShow")?.addEventListener("click", () => act("admin_set_suspended", { pid: p.id, val: false, rid }, t("عاد مقدم الخدمة للظهور على الخريطة")));
+    m.querySelector("#arDismiss")?.addEventListener("click", () => act("admin_close_report", { rid, st: "dismissed" }, t("أُغلق البلاغ")));
+  });
+}
 function requestForm(p) {
   const first = (p.services || []).includes(filter) ? filter : p.services?.[0];
   const opts = (p.services || []).map(s => `<option value="${s}" ${s === first ? "selected" : ""}>${sName(s)}</option>`).join("");
@@ -672,7 +711,7 @@ const copyRow = (l, v) => `<div class="copyrow"><span class="t"><span>${l}</span
 const PAGES = {
   notes() {
     if (!notes.length) return `<div class="empty">${ico("bell")}<b>${t("لا توجد إشعارات بعد")}</b><span>${t("ستظهر هنا الطلبات الجديدة وتحديثاتها")}</span></div>`;
-    return `<div class="list">${notes.map(n => `<button class="row ${n.read ? "" : "unread"}" data-req="${n.request_id || ""}"><span class="ic">${ico("bell")}</span><span class="t"><b>${esc(noteTitle(n))}</b>${n.body ? `<span>${esc(n.body)}</span>` : ""}</span><span class="end">${fmtDate(n.created_at)}</span></button>`).join("")}</div>`;
+    return `<div class="list">${notes.map(n => `<button class="row ${n.read ? "" : "unread"}" data-req="${n.request_id || ""}" data-rep="${n.report_id || ""}"><span class="ic">${ico("bell")}</span><span class="t"><b>${esc(noteTitle(n))}</b>${n.body ? `<span>${esc(n.body)}</span>` : ""}</span><span class="end">${fmtDate(n.created_at)}</span></button>`).join("")}</div>`;
   },
   orders() {
     const isP = me?.is_provider || inReqs.length;
@@ -732,7 +771,7 @@ const PAGES = {
 };
 const BIND = {
   notes(v) {
-    v.querySelectorAll("[data-req]").forEach(b => b.onclick = () => { const id = +b.dataset.req; if (id) reqDetails(id); });
+    v.querySelectorAll("[data-req]").forEach(b => b.onclick = () => { const r = +b.dataset.rep, id = +b.dataset.req; if (r) adminReport(r); else if (id) reqDetails(id); });
     if (unread()) setTimeout(markAllRead, 1500);
   },
   orders(v) {
@@ -850,7 +889,8 @@ function installBox(auto) {
     : android && !deferredInstall
       ? `<ol class="steps"><li>${t("اضغط النقاط الثلاث ⋮ أعلى المتصفح")}</li><li>${t("اختر «تثبيت التطبيق» أو «إضافة إلى الشاشة الرئيسية»")}</li></ol>`
       : deferredInstall ? "" : `<ol class="steps"><li>${t("في Chrome أو Edge اضغط أيقونة التثبيت في شريط العنوان")}</li></ol>`;
-  modal(`<div class="installhead"><img class="logoimg" src="icon-192.png" alt=""><div><h3>${t("أضف «{app}» لشاشتك الرئيسية", { app: APP })}</h3><p class="lead m0">${t("يفتح بضغطة مثل التطبيق، بدون تحميل من المتجر، وتصلك الإشعارات حتى والجوال مقفل.")}</p></div></div>
+  modal(`<div class="installhead"><img class="logoimg" src="icon-192.png" alt=""><div><h3>${t("ثبّت «{app}» على جوالك", { app: APP })}</h3><p class="lead m0">${t("مساعدتك على الطريق وفي البيت، على بُعد لمسة.")}</p></div></div>
+    <ul class="perks"><li>${ico("bolt")}<span>${t("يفتح فوراً من الشاشة الرئيسية مثل أي تطبيق")}</span></li><li>${ico("bell")}<span>${t("إشعار فوري بطلبك حتى والجوال مقفل")}</span></li><li>${ico("sparkle")}<span>${t("مجاني وخفيف، لا يحتاج متجراً ولا مساحة")}</span></li></ul>
     ${steps}
     <div class="form">${deferredInstall ? `<button class="btn" id="doInstall">${ico("plus")}${t("ثبّت التطبيق الآن")}</button>` : ""}
     <button class="btn ghost" data-close>${auto ? t("ليس الآن") : t("تم")}</button></div>`, m => {
