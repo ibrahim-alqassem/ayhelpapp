@@ -102,8 +102,14 @@ function admAddView(el) {
   const doSearch = async () => {
     const s = q("#aSearch").value.trim(); if (!s) return;
     try {
-      const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=sa&accept-language=ar&q=${encodeURIComponent(s)}`).then(x => x.json());
-      if (r[0]) admMapObj.setView([+r[0].lat, +r[0].lon], 16); else toast(t("لم نجد هذا المكان، جرّب اسماً آخر"));
+      const c = admMapObj.getCenter(), vb = [c.lng - 0.6, c.lat + 0.6, c.lng + 0.6, c.lat - 0.6].join(",");
+      const tries = [...new Set([s, s.replace(/(^|\s)(حي|شارع|طريق)\s+/g, " ").trim()])];
+      let hit = null;
+      for (const q of tries) {
+        const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=sa&accept-language=ar&viewbox=${vb}&q=${encodeURIComponent(q)}`).then(x => x.json());
+        if (r[0]) { hit = r[0]; break; }
+      }
+      if (hit) admMapObj.setView([+hit.lat, +hit.lon], 16); else toast(t("لم نجد هذا المكان، جرّب اسماً آخر"));
     } catch (x) { toast(t("تعذّر البحث الآن")); }
   };
   q("#aSearchB").onclick = doSearch; q("#aSearch").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); doSearch(); } };
