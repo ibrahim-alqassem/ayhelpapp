@@ -318,3 +318,13 @@ textarea{width:100%;box-sizing:border-box;font:inherit;resize:vertical}
 .textlink.small{font-size:13px;font-weight:500;color:var(--muted)}
 .textlink.center{display:block;margin:4px auto 0}
 #aCC{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.avatar{overflow:hidden;position:relative;padding:0}
+.avatar img{width:100%;height:100%;object-fit:cover;display:block}
+button.avatar{cursor:pointer;overflow:visible}
+button.avatar img{border-radius:50%}
+.avatar .cam{position:absolute;inset-inline-end:-2px;bottom:-2px;width:28px;height:28px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;border:2px solid var(--surface)}
+.avatar .cam .i{width:15px;height:15px}
+.drawer .who .avatar .cam{width:24px;height:24px}
+.avbig{display:flex;justify-content:center;margin:6px 0 14px}
+.avbig .avatar{width:128px;height:128px;font-size:46px}
+.pav{width:36px;height:36px;border-radius:50%;object-fit:cover;flex:none}

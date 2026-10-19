@@ -401,5 +401,18 @@ window.I18N_EN = {
 "هذا الرقم مسجّل من قبل. سجّل الدخول بدلاً من ذلك.": "This number is already registered. Sign in instead.",
 "رقم الدخول": "Login number",
 "رقمك هو اسم الدخول. لتغييره تواصل معنا.": "Your number is your login. Contact us to change it.",
-"سجّل برقم جوالك وكلمة مرور خلال ثوانٍ": "Sign up with your mobile number and a password in seconds"
+"سجّل برقم جوالك وكلمة مرور خلال ثوانٍ": "Sign up with your mobile number and a password in seconds",
+"صورة الحساب": "Profile photo",
+"تغيير الصورة": "Change photo",
+"إضافة صورة": "Add photo",
+"حذف الصورة": "Remove photo",
+"تعذّر رفع الصورة، جرّب صورة أخرى.": "Couldn’t upload the photo, try another one.",
+"تم تحديث صورتك": "Photo updated",
+"حُذفت الصورة": "Photo removed",
+"سجّل لتصلك الإشعارات": "Sign up to get notifications",
+"أنشئ حساباً مجاناً لتصلك إشعارات طلباتك فوراً، حتى والجوال مقفل.": "Create a free account to get instant updates on your requests, even when your phone is locked.",
+"سجّل لتتابع طلباتك": "Sign up to track your requests",
+"أنشئ حساباً مجاناً لتطلب الخدمة من داخل الموقع وتتابع حالة طلباتك.": "Create a free account to request services in the app and track their status.",
+"يمكنك الدخول مرة أخرى برقم جوالك وكلمة المرور.": "You can sign in again with your mobile number and password.",
+"سجّل برقم جوالك، ثم «سجّل خدمتك» وحدد مكانك وساعات عملك. تصلك الطلبات في الإشعارات.": "Sign up with your mobile number, then “List your service”, set your location and hours. Requests arrive in notifications."
 };

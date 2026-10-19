@@ -87,7 +87,7 @@ const IC = {
   flag: '<path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/>',
   eyeoff: '<path d="M3 3l18 18"/><path d="M10.6 6.1A9.8 9.8 0 0 1 12 6c5 0 9 6 9 6a17 17 0 0 1-3.2 3.7M6.1 7.6C3.9 9.2 3 12 3 12s4 6 9 6c1.3 0 2.5-.3 3.6-.8"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
   shield: '<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/>',
-  trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>', moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
+  trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>', camera: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>', moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>',
   phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>',
   mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
   plus: '<rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8v8M8 12h8"/>',
@@ -208,7 +208,7 @@ async function loadMe() {
   }
 }
 async function loadProviders() {
-  const { data, error } = await sb.from("profiles").select("id,name,phone,services,bio,district,lat,lng,active,is_provider,hours,price_note").eq("is_provider", true).eq("active", true).eq("suspended", false);
+  const { data, error } = await sb.from("profiles").select("id,name,phone,services,bio,district,lat,lng,active,is_provider,hours,price_note,avatar_url").eq("is_provider", true).eq("active", true).eq("suspended", false);
   if (!error) { providers = data || []; drawMarkers(); if (tab === "home") renderSheet(); }
 }
 async function loadRequests() {
@@ -378,7 +378,6 @@ function startShell() {
 const TITLES = { home: "اطلب خدمة", notes: "الإشعارات", account: "حسابي", settings: "الإعدادات", orders: "الطلبات", contact: "تواصل معنا", about: "عن الموقع" };
 const SUBPAGES = ["orders", "contact", "about"];
 function go(tb) {
-  if (["notes", "orders"].includes(tb) && needLogin(t("سجّل دخولك لتتابع طلباتك وإشعاراتك."), () => go(tb))) return;
   tab = tb; closeDrawer();
   $("title").textContent = t(TITLES[tb]);
   const isMap = tb === "home";
@@ -401,11 +400,14 @@ function renderNav() {
   nav.innerHTML = b("home", "home", "الرئيسية") + b("notes", "bell", "الإشعارات", unread()) + b("account", "user", "حسابي") + b("settings", "gear", "الإعدادات");
   nav.querySelectorAll("[data-tab]").forEach(x => x.onclick = () => go(x.dataset.tab));
 }
+const initial = u => esc(((u?.name || "").trim()[0]) || "؟");
+const avatarHtml = (u, edit) => `<${edit ? 'button type="button"' : "div"} class="avatar${edit ? " edit" : ""}" ${edit ? `data-avatar aria-label="${t("صورة الحساب")}"` : ""}>${u?.avatar_url ? `<img src="${esc(u.avatar_url)}" alt="">` : initial(u)}${edit ? `<span class="cam">${ico("camera")}</span>` : ""}</${edit ? "button" : "div"}>`;
+const guestHtml = (icon, title, text) => `<div class="empty">${ico(icon)}<b>${title}</b><span>${text}</span><div class="w240 form"><button class="btn" id="toSignup">${t("إنشاء حساب")}</button><button class="btn ghost" id="toLogin">${t("لديّ حساب — تسجيل الدخول")}</button></div></div>`;
 function renderDrawer() {
   const d = $("drawer"); if (!d) return;
   const name = me?.name || t("زائر"), sub = session ? loginId() : t("تصفح بدون حساب");
   d.innerHTML = `<button class="iconbtn" id="closeDrawer" aria-label="${t("إغلاق")}" style="color:inherit">${ico("x")}</button>
-    <div class="who"><div class="avatar">${esc((name.trim()[0]) || "؟")}</div><b>${esc(name)}</b><span>${esc(sub)}</span></div>
+    <div class="who">${avatarHtml(me, !!session)}<b>${esc(name)}</b><span>${session ? `<bdi dir="ltr">${esc(sub)}</bdi>` : esc(sub)}</span></div>
     <nav>
       <button data-go="home">${ico("home")}<span>${t("الرئيسية")}</span></button>
       <button data-go="orders">${ico("orders")}<span>${t("الطلبات")}</span></button>
@@ -417,8 +419,9 @@ function renderDrawer() {
     <div class="foot"><button data-go="install">${t("أضف للشاشة الرئيسية")}</button>${session ? `<button id="logout">${t("تسجيل الخروج")}</button>` : `<button id="loginD">${t("حساب جديد / تسجيل الدخول")}</button>`}</div>`;
   d.querySelector("#closeDrawer").onclick = goBack;
   d.querySelectorAll("[data-go]").forEach(x => x.onclick = () => action(x.dataset.go));
-  d.querySelector("#logout")?.addEventListener("click", () => { closeDrawer(); confirmBox(t("تسجيل الخروج"), t("يمكنك الدخول مرة أخرى ببريدك وكلمة المرور."), t("تسجيل الخروج"), logout); });
-  d.querySelector("#loginD")?.addEventListener("click", () => openAuth("signup"));
+  d.querySelector("#logout")?.addEventListener("click", () => { closeDrawer(); confirmBox(t("تسجيل الخروج"), t("يمكنك الدخول مرة أخرى برقم جوالك وكلمة المرور."), t("تسجيل الخروج"), logout); });
+  d.querySelector("#loginD")?.addEventListener("click", () => go("account"));
+  d.querySelector("[data-avatar]")?.addEventListener("click", avatarBox);
 }
 function openDrawer() { $("drawer").classList.add("on"); $("dscrim").classList.add("on"); sync(); }
 function closeDrawer() { $("drawer")?.classList.remove("on"); $("dscrim")?.classList.remove("on"); }
@@ -542,7 +545,7 @@ function providerBox(id) {
   const p = providers.find(x => x.id === id); if (!p) return;
   const d = myPos ? km(dist(myPos, [p.lat, p.lng])) : null;
   const self = session && session.user.id === p.id;
-  modal(`<h3>${ico("store")}${esc(p.name)}</h3>
+  modal(`<h3>${p.avatar_url ? `<img class="pav" src="${esc(p.avatar_url)}" alt="">` : ico("store")}${esc(p.name)}</h3>
     <p class="lead">${[esc(p.district || ""), d ? t("يبعد {d}", { d }) : ""].filter(Boolean).join(" · ")}</p>
     ${p.hours ? `<p class="meta">${ico("clock")}<span>${hoursText(p.hours)}</span>${openPill(p.hours)}</p>` : ""}
     ${p.price_note ? `<p class="meta">${ico("tag")}<span>${esc(p.price_note)}</span></p>` : ""}
@@ -739,17 +742,22 @@ function renderPage() {
   v.querySelectorAll("[data-tab]").forEach(x => x.onclick = () => go(x.dataset.tab));
   v.querySelectorAll("[data-go]").forEach(x => x.onclick = () => action(x.dataset.go));
   v.querySelectorAll("[data-copy]").forEach(x => x.onclick = () => copy(x.dataset.copy));
+  v.querySelector("#toSignup")?.addEventListener("click", () => openAuth("signup"));
+  v.querySelector("#toLogin")?.addEventListener("click", () => openAuth("login"));
+  v.querySelector("[data-avatar]")?.addEventListener("click", avatarBox);
   (BIND[tab] || (() => {}))(v);
 }
 const copyRow = (l, v) => `<div class="copyrow"><span class="t"><span>${l}</span><bdi dir="ltr">${esc(v)}</bdi></span><button data-copy="${esc(v)}">${ico("copy")}${t("نسخ")}</button></div>`;
 const PAGES = {
   notes() {
+    if (!session) return guestHtml("bell", t("سجّل لتصلك الإشعارات"), t("أنشئ حساباً مجاناً لتصلك إشعارات طلباتك فوراً، حتى والجوال مقفل."));
     if (!notes.length) return `<div class="empty">${ico("bell")}<b>${t("لا توجد إشعارات بعد")}</b><span>${t("ستظهر هنا الطلبات الجديدة وتحديثاتها")}</span></div>`;
     return `<p class="swipehint">${t("اسحب الإشعار يميناً أو يساراً، أو اضغط عليه مطوّلاً لحذفه")}</p>
     <div class="list">${notes.map(n => `<div class="swipe" data-nid="${n.id}"><button class="sdel l" aria-label="${t("حذف")}">${ico("trash")}</button><button class="sdel r" aria-label="${t("حذف")}">${ico("trash")}</button><button class="row ${n.read ? "" : "unread"}" data-req="${n.request_id || ""}" data-rep="${n.report_id || ""}"><span class="ic">${ico("bell")}</span><span class="t"><b>${esc(noteTitle(n))}</b>${n.body ? `<span>${esc(n.body)}</span>` : ""}</span><span class="end">${fmtDate(n.created_at)}</span></button></div>`).join("")}</div>
     <div class="center"><button class="linkbtn" id="clearNotes">${ico("trash")}${t("مسح كل الإشعارات")}</button></div>`;
   },
   orders() {
+    if (!session) return guestHtml("orders", t("سجّل لتتابع طلباتك"), t("أنشئ حساباً مجاناً لتطلب الخدمة من داخل الموقع وتتابع حالة طلباتك."));
     const isP = me?.is_provider || inReqs.length;
     const list = ordersTab === "in" ? inReqs : myReqs, nNew = inReqs.filter(r => r.status === "new").length;
     const tabs = isP ? `<div class="tabs" role="tablist"><button role="tab" data-ot="mine" aria-selected="${ordersTab === "mine"}">${t("طلباتي")}</button><button role="tab" data-ot="in" aria-selected="${ordersTab === "in"}">${t("الواردة")}${nNew ? " (" + num(nNew) + ")" : ""}</button></div>` : "";
@@ -757,9 +765,9 @@ const PAGES = {
     return tabs + `<div class="list">${list.map(r => `<button class="row" data-req="${r.id}"><span class="ic">${ico(svc(r.service).icon)}</span><span class="t"><b>${sName(r.service)} ${stPill(r.status)}</b><span>#${num(r.id)} · ${ordersTab === "in" ? esc(r.customer_name || "") + " · " : ""}${fmtDate(r.created_at)}</span></span>${ico("chev", "i flip")}</button>`).join("")}</div>`;
   },
   account() {
-    if (!session) return `<div class="empty">${ico("user")}<b>${t("أنت تتصفح بدون حساب")}</b><span>${t("تصفح الخدمات وتواصل مع مقدميها بدون حساب. سجّل مجاناً لتطلب من داخل الموقع أو تعرض خدمتك.")}</span><div class="w240 form"><button class="btn" id="toSignup">${t("إنشاء حساب")}</button><button class="btn ghost" id="toLogin">${t("لديّ حساب — تسجيل الدخول")}</button></div></div>`;
+    if (!session) return guestHtml("user", t("أنت تتصفح بدون حساب"), t("تصفح الخدمات وتواصل مع مقدميها بدون حساب. سجّل مجاناً لتطلب من داخل الموقع أو تعرض خدمتك."));
     const u = me || {};
-    return `<div class="hero"><div class="avatar">${esc((u.name || "؟").trim()[0])}</div><h2>${esc(u.name)}</h2><div class="ph">${phoneHtml(u.phone)}</div></div>
+    return `<div class="hero">${avatarHtml(u, true)}<h2>${esc(u.name)}</h2><div class="ph">${phoneHtml(u.phone)}</div></div>
       <div class="stats">
         <button class="stat" data-go="mystore">${ico("store")}<span>${t("العضوية")}</span><b>${u.is_provider ? t("مقدم خدمة") : t("عميل")}</b></button>
         <button class="stat" data-tab="orders">${ico("orders")}<span>${t("الطلبات")}</span><b>${num(myReqs.length + inReqs.length)}</b></button>
@@ -800,7 +808,7 @@ const PAGES = {
     return `<div class="pad prose"><div class="brandmark mb"><img class="logoimg" src="icon-192.png" alt=""><div><h1>${APP}</h1><p>${TAG}</p></div></div>
       <p>${t("«{app}» يجمع مقدمي الخدمات على خريطة واحدة في كل مدن المملكة: خدمات الطريق مثل التوصيل والبطارية والوقود والإطار والسطحة، وخدمات المنزل مثل السباكة والكهرباء والتكييف والتنظيف.", { app: APP })}</p>
       <h4>${t("إذا كنت تحتاج خدمة")}</h4><p>${t("اختر الخدمة وسترى أقرب مقدميها. اطلب من داخل الموقع، أو تواصل معه مباشرة بالاتصال أو واتساب.")}</p>
-      <h4>${t("إذا كنت تقدّم خدمة")}</h4><p>${t("سجّل ببريدك، ثم «سجّل خدمتك» وحدد مكانك وساعات عملك. تصلك الطلبات في الإشعارات.")}</p>
+      <h4>${t("إذا كنت تقدّم خدمة")}</h4><p>${t("سجّل برقم جوالك، ثم «سجّل خدمتك» وحدد مكانك وساعات عملك. تصلك الطلبات في الإشعارات.")}</p>
       <h4>${t("السعر")}</h4><p>${t("السعر يُتفق عليه مباشرة مع مقدم الخدمة حسب الموقع والمسافة ونوع العمل. الموقع لا يأخذ أي عمولة.")}</p>
       <p class="muted">${t("الإصدار {v}", { v: num("2.1") })}</p></div>`;
   }
@@ -845,8 +853,6 @@ const BIND = {
     v.querySelectorAll("[data-req]").forEach(b => b.onclick = () => reqDetails(+b.dataset.req));
   },
   account(v) {
-    v.querySelector("#toSignup")?.addEventListener("click", () => openAuth("signup"));
-    v.querySelector("#toLogin")?.addEventListener("click", () => openAuth("login"));
     v.querySelector("#editProfile")?.addEventListener("click", editProfile);
   },
   settings(v) {
@@ -868,6 +874,7 @@ const BIND = {
     };
     v.querySelector("#themeBtn").onclick = () => { theme = { system: "light", light: "dark", dark: "system" }[theme]; store.set("theme", theme); applyTheme(); renderPage(); };
     v.querySelector("#delBtn")?.addEventListener("click", () => confirmBox(t("حذف الحساب"), t("سيُحذف حسابك وخدمتك وطلباتك وإشعاراتك نهائياً، ولا يمكن التراجع."), t("احذف حسابي نهائياً"), async () => {
+      if (me?.avatar_url) await sb.storage.from("avatars").remove([`${session.user.id}/avatar.jpg`]).catch(() => {});
       const { error } = await sb.rpc("delete_my_account");
       if (error) return toast(t("تعذّر الحذف الآن، حاول لاحقاً"));
       await logout(); toast(t("حُذف حسابك"));
@@ -928,6 +935,58 @@ function editProfile() {
 }
 
 /* ===== نوافذ عامة ===== */
+/* صورة الحساب: تُصغَّر على الجهاز (٣٢٠×٣٢٠) قبل الرفع */
+function avatarBox() {
+  if (!session) return;
+  const has = !!me?.avatar_url;
+  modal(`<h3>${ico("camera")}${t("صورة الحساب")}</h3>
+    <div class="center avbig">${avatarHtml(me)}</div>
+    <div class="form">
+      <label class="btn">${ico("camera")}${has ? t("تغيير الصورة") : t("إضافة صورة")}<input type="file" id="avFile" accept="image/*" hidden></label>
+      ${has ? `<button class="btn ghost dangerc" id="avDel">${ico("trash")}${t("حذف الصورة")}</button>` : ""}
+      <p class="err" id="avErr"></p>
+    </div>`, m => {
+    const err = m.querySelector("#avErr");
+    m.querySelector("#avFile").onchange = async e => {
+      const f = e.target.files[0]; if (!f) return;
+      err.className = "err ok"; err.textContent = t("لحظة…");
+      try {
+        const blob = await squareImage(f, 320);
+        const path = `${session.user.id}/avatar.jpg`;
+        const up = await sb.storage.from("avatars").upload(path, blob, { upsert: true, contentType: "image/jpeg", cacheControl: "3600" });
+        if (up.error) throw up.error;
+        const url = sb.storage.from("avatars").getPublicUrl(path).data.publicUrl + "?v=" + Date.now();
+        const { error } = await sb.from("profiles").update({ avatar_url: url }).eq("id", session.user.id);
+        if (error) throw error;
+        me.avatar_url = url; afterAvatar(); toast(t("تم تحديث صورتك"));
+      } catch (x) { err.className = "err"; err.textContent = t("تعذّر رفع الصورة، جرّب صورة أخرى."); }
+    };
+    m.querySelector("#avDel")?.addEventListener("click", async () => {
+      await sb.storage.from("avatars").remove([`${session.user.id}/avatar.jpg`]).catch(() => {});
+      const { error } = await sb.from("profiles").update({ avatar_url: null }).eq("id", session.user.id);
+      if (error) { err.className = "err"; err.textContent = t("تعذّر الحذف، حاول مرة أخرى."); return; }
+      me.avatar_url = null; afterAvatar(); toast(t("حُذفت الصورة"));
+    });
+  });
+}
+function afterAvatar() {
+  goBack(); renderDrawer(); if (tab === "account") renderPage();
+  const p = providers.find(x => x.id === session?.user.id); if (p) p.avatar_url = me.avatar_url;
+}
+function squareImage(file, size) {
+  return new Promise((res, rej) => {
+    const img = new Image(), url = URL.createObjectURL(file);
+    img.onload = () => {
+      const s = Math.min(img.naturalWidth, img.naturalHeight), c = document.createElement("canvas");
+      c.width = c.height = size;
+      c.getContext("2d").drawImage(img, (img.naturalWidth - s) / 2, (img.naturalHeight - s) / 2, s, s, 0, 0, size, size);
+      URL.revokeObjectURL(url);
+      c.toBlob(b => b ? res(b) : rej(new Error("blob")), "image/jpeg", 0.85);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("img")); };
+    img.src = url;
+  });
+}
 function modal(html, after) {
   app.querySelector(".modal")?.remove();
   const m = document.createElement("div"); m.className = "modal";
