@@ -83,7 +83,7 @@ const IC = {
   chat: '<path d="M21 12a8 8 0 0 1-12 7l-5 1 1-4.5A8 8 0 1 1 21 12z"/>',
   heart: '<path d="M12 20s-7-4.5-9-9a4.5 4.5 0 0 1 9-2 4.5 4.5 0 0 1 9 2c-2 4.5-9 9-9 9z"/>',
   lang: '<path d="M3 5h10M8 3v2M5 9c1 3 4 5 6 6M11 5c-1 5-4 8-7 9"/><path d="m13 21 4-9 4 9M14.5 18h5"/>',
-  check: '<path d="m5 12 5 5 9-10"/>',
+  check: '<path d="m5 12 5 5 9-10"/>', edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m14 6 4 4"/>',
   flag: '<path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/>',
   eyeoff: '<path d="M3 3l18 18"/><path d="M10.6 6.1A9.8 9.8 0 0 1 12 6c5 0 9 6 9 6a17 17 0 0 1-3.2 3.7M6.1 7.6C3.9 9.2 3 12 3 12s4 6 9 6c1.3 0 2.5-.3 3.6-.8"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
   shield: '<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/>',
@@ -129,7 +129,7 @@ const priceHint = () => `<p class="pricehint">${ico("tag")}<span>${t("السعر
 /* ===== الحالة ===== */
 const app = $("app");
 let session = null, me = null;
-let providers = [], myReqs = [], inReqs = [], notes = [];
+let providers = [], myReqs = [], inReqs = [], notes = [], isAdmin = false;
 let tab = "home", sheetState = 0, cat = store.get("cat", "road"), filter = null, ordersTab = "mine";
 let map = null, markers = null, meMarker = null, tiles = null, myPos = store.get("pos", null), channel = null;
 let theme = store.get("theme", "system"), notifyOn = store.get("notify", true), deferredInstall = null;
@@ -172,11 +172,12 @@ new MutationObserver(() => sync()).observe(app, { childList: true });
 
 /* ===== البداية ===== */
 async function boot() {
+  claimFromUrl();
   startShell();
   maybeInstallPrompt();
   const { data } = await sb.auth.getSession();
   session = data.session;
-  if (session) await afterLogin();
+  if (session) await afterLogin(); else processClaim();
   sb.auth.onAuthStateChange((ev, s) => {
     if (ev === "PASSWORD_RECOVERY") { session = s; newPasswordBox(); return; }
     if (ev === "SIGNED_OUT") { session = null; me = null; cleanupRealtime(); return; }
@@ -185,6 +186,8 @@ async function boot() {
 }
 async function afterLogin() {
   await loadMe();
+  isAdmin = (await sb.rpc("is_app_admin").catch(() => ({}))).data === true;
+  await processClaim();
   renderDrawer(); renderNav(); renderTop();
   if (tab !== "home") renderPage();
   loadRequests(); loadNotes(); subscribe();
@@ -208,8 +211,14 @@ async function loadMe() {
   }
 }
 async function loadProviders() {
-  const { data, error } = await sb.from("profiles").select("id,name,phone,services,bio,district,lat,lng,active,is_provider,hours,price_note,avatar_url").eq("is_provider", true).eq("active", true).eq("suspended", false);
-  if (!error) { providers = data || []; drawMarkers(); if (tab === "home") renderSheet(); }
+  const [a, b] = await Promise.all([
+    sb.from("profiles").select("id,name,phone,services,bio,district,lat,lng,active,is_provider,hours,price_note,avatar_url,verified").eq("is_provider", true).eq("active", true).eq("suspended", false),
+    sb.from("listings").select("id,name,phone,services,district,bio,hours,price_note,lat,lng,status")
+  ]);
+  if (a.error) return;
+  const own = new Set((a.data || []).map(p => p.phone));
+  providers = (a.data || []).concat((b.data || []).filter(l => !own.has(l.phone)).map(l => ({ ...l, id: "L" + l.id, lid: l.id, listing: true })));
+  drawMarkers(); if (tab === "home") renderSheet();
 }
 async function loadRequests() {
   if (!session) return;
@@ -269,8 +278,8 @@ function renderAuth(el, mode) {
         <label><input type="radio" name="role" value="customer" ${role === "customer" ? "checked" : ""}><span>${ico("search")}${t("أطلب خدمة")}</span></label>
         <label><input type="radio" name="role" value="provider" ${role === "provider" ? "checked" : ""}><span>${ico("store")}${t("أقدّم خدمة")}</span></label></div>
 </div>
-      <div class="in"><label for="aName">${t("الاسم")}</label><input id="aName" autocomplete="name" placeholder="${t("اسمك أو اسم نشاطك")}"></div>` : ""}
-      <div class="in" id="phoneIn"><label for="aPhone">${t("رقم الجوال")}</label><div class="phone"><span id="aCC">+966</span><input id="aPhone" inputmode="numeric" ${signup ? 'maxlength="10"' : ""} placeholder="5XXXXXXXX" autocomplete="${signup ? "tel-national" : "username"}"></div></div>
+      <div class="in"><label for="aName">${t("الاسم")}</label><input id="aName" autocomplete="name" placeholder="${t("اسمك أو اسم نشاطك")}" value="${esc(o.name || "")}"></div>` : ""}
+      <div class="in" id="phoneIn"><label for="aPhone">${t("رقم الجوال")}</label><div class="phone"><span id="aCC">+966</span><input id="aPhone" inputmode="numeric" ${signup ? 'maxlength="10"' : ""} placeholder="5XXXXXXXX" autocomplete="${signup ? "tel-national" : "username"}" value="${esc(o.phone || "")}" ${o.phone ? "readonly" : ""}></div></div>
       <div class="in"><label for="aPass">${t("كلمة المرور")}</label><div class="passw"><input id="aPass" type="password" class="ltr" autocomplete="${signup ? "new-password" : "current-password"}" placeholder="${signup ? t("٦ أحرف أو أرقام على الأقل") : t("كلمة المرور")}"><button type="button" class="eye" id="aEye">${t("إظهار")}</button></div></div>
       <div class="err" id="aErr" role="alert"></div>
       ${signup ? `<p class="terms">${t("بالمتابعة، أوافق على")} <button type="button" id="aTerms">${t("الشروط والأحكام وسياسة الخصوصية")}</button></p>` : ""}
@@ -376,8 +385,8 @@ function startShell() {
   initMap(); loadProviders(); go("home");
   if (myPos) placeMe(); else locate(false);
 }
-const TITLES = { home: "اطلب خدمة", notes: "الإشعارات", account: "حسابي", settings: "الإعدادات", orders: "الطلبات", contact: "تواصل معنا", about: "عن الموقع" };
-const SUBPAGES = ["orders", "contact", "about"];
+const TITLES = { home: "اطلب خدمة", notes: "الإشعارات", account: "حسابي", settings: "الإعدادات", orders: "الطلبات", contact: "تواصل معنا", about: "عن الموقع", admin: "لوحة الإدارة" };
+const SUBPAGES = ["orders", "contact", "about", "admin"];
 function go(tb) {
   tab = tb; closeDrawer();
   $("title").textContent = t(TITLES[tb]);
@@ -416,6 +425,7 @@ function renderDrawer() {
       <button data-go="share">${ico("share")}<span>${t("شارك الموقع")}</span></button>
       <button data-go="contact">${ico("chat")}<span>${t("تواصل معنا")}</span></button>
       <button data-go="about">${ico("heart")}<span>${t("عن الموقع")}</span></button>
+      ${isAdmin ? `<button data-go="admin">${ico("shield")}<span>${t("لوحة الإدارة")}</span></button>` : ""}
     </nav>
     <div class="foot"><button data-go="install">${t("أضف للشاشة الرئيسية")}</button>${session ? `<button id="logout">${t("تسجيل الخروج")}</button>` : `<button id="loginD">${t("حساب جديد / تسجيل الدخول")}</button>`}</div>`;
   d.querySelector("#closeDrawer").onclick = goBack;
@@ -438,7 +448,7 @@ function action(a) {
 }
 async function logout() {
   cleanupRealtime(); pushLogout(); await sb.auth.signOut();
-  session = null; me = null; notes = []; myReqs = []; inReqs = [];
+  session = null; me = null; notes = []; myReqs = []; inReqs = []; isAdmin = false;
   go("home"); toast(t("تم تسجيل الخروج"));
 }
 
@@ -456,13 +466,13 @@ function initMap() {
   setTiles();
   markers = L.layerGroup().addTo(map);
 }
-function mkIcon(name, off) { return L.divIcon({ className: "", html: `<div class="mk ${off ? "off" : ""}">${ico(name)}</div>`, iconSize: [40, 40], iconAnchor: [4, 40] }); }
+function mkIcon(name, off, unv) { return L.divIcon({ className: "", html: `<div class="mk ${off ? "off" : ""} ${unv ? "unv" : ""}">${ico(name)}</div>`, iconSize: [40, 40], iconAnchor: [4, 40] }); }
 function drawMarkers() {
   if (!markers) return;
   markers.clearLayers();
   shownProviders().forEach(p => {
     const first = filter || (p.services || []).find(s => svc(s).cat === cat) || p.services?.[0] || "wrench";
-    L.marker([p.lat, p.lng], { icon: mkIcon(svc(first).icon, openNow(p.hours) === false), title: p.name }).on("click", () => providerBox(p.id)).addTo(markers);
+    L.marker([p.lat, p.lng], { icon: mkIcon(svc(first).icon, openNow(p.hours) === false, p.listing), title: p.name }).on("click", () => providerBox(p.id)).addTo(markers);
   });
 }
 let hiddenProv = store.get("hidden", []);
@@ -509,7 +519,7 @@ function renderSheet() {
     const list = shownProviders();
     sub = list.length ? t("{n} مقدم خدمة قريب منك", { n: num(list.length) }) : t("لا يوجد مقدم لهذه الخدمة بعد");
     body = `<button class="back" id="sBack">${ico("back", "i flip")}${t(CATS.find(c => c.id === svc(filter).cat).name)}</button>`
-      + (list.length ? list.map(p => `<button class="svc" data-p="${p.id}"><span class="ic">${ico(svc(filter).icon)}</span><span class="t"><b>${esc(p.name)}</b><span>${[esc(p.district || ""), km(p.dist)].filter(Boolean).join(" · ")}</span></span>${openNow(p.hours) === null ? "" : `<span class="n ${p.open ? "" : "off"}">${p.open ? t("متوفر") : t("غير متوفر")}</span>`}${ico("chev", "i flip")}</button>`).join("")
+      + (list.length ? list.map(p => `<button class="svc" data-p="${p.id}"><span class="ic">${ico(svc(filter).icon)}</span><span class="t"><b>${esc(p.name)}${p.verified ? vMark() : ""}</b><span>${[esc(p.district || ""), km(p.dist)].filter(Boolean).join(" · ")}${p.listing ? " · " + t("غير موثّق") : ""}</span></span>${openNow(p.hours) === null ? "" : `<span class="n ${p.open ? "" : "off"}">${p.open ? t("متوفر") : t("غير متوفر")}</span>`}${ico("chev", "i flip")}</button>`).join("")
         : `<p class="none">${t("شارك الموقع مع من يقدّم هذه الخدمة ليسجّل ويظهر هنا.")}</p>`)
       + priceHint();
   } else if (sheetState === 1) { sub = t("اختر نوع الخدمة"); body = cats + join; }
@@ -546,20 +556,23 @@ function providerBox(id) {
   const p = providers.find(x => x.id === id); if (!p) return;
   const d = myPos ? km(dist(myPos, [p.lat, p.lng])) : null;
   const self = session && session.user.id === p.id;
-  modal(`<h3>${p.avatar_url ? `<img class="pav" src="${esc(p.avatar_url)}" alt="">` : ico("store")}${esc(p.name)}</h3>
+  modal(`<h3>${p.avatar_url ? `<img class="pav" src="${esc(p.avatar_url)}" alt="">` : ico("store")}${esc(p.name)}${p.verified ? vMark() : ""}</h3>
+    ${p.listing ? `<p class="unvnote">${ico("info")}<span>${t("أضافته إدارة التطبيق من بيانات معلنة، ولم يؤكده صاحبه بعد.")}</span></p>` : ""}
     <p class="lead">${[esc(p.district || ""), d ? t("يبعد {d}", { d }) : ""].filter(Boolean).join(" · ")}</p>
     ${p.hours ? `<p class="meta">${ico("clock")}<span>${hoursText(p.hours)}</span>${openPill(p.hours)}</p>` : ""}
     ${p.price_note ? `<p class="meta">${ico("tag")}<span>${esc(p.price_note)}</span></p>` : ""}
     <div class="tags">${(p.services || []).map(s => `<span class="pill">${sName(s)}</span>`).join("")}</div>
     ${p.bio ? `<p class="bio">${esc(p.bio)}</p>` : ""}
     <div class="form">
-      ${self ? `<button class="btn ghost" id="pEdit">${t("تعديل خدمتي")}</button>` : `<button class="btn" id="pReq">${t("اطلب الخدمة")}</button>`}
+      ${self ? `<button class="btn ghost" id="pEdit">${t("تعديل خدمتي")}</button>` : p.listing ? "" : `<button class="btn" id="pReq">${t("اطلب الخدمة")}</button>`}
       <div class="btns">
         <a class="btn wa sm" href="${waLink(intl(p.phone), t("السلام عليكم، وصلت لك من موقع {app}", { app: APP }))}" target="_blank" rel="noopener">${ico("wa")}${t("واتساب")}</a>
         <a class="btn ghost sm" href="tel:+${intl(p.phone)}">${ico("phone")}${t("اتصال")}</a>
       </div>
       ${priceHint()}
-      ${self ? "" : `<div class="linkrow"><button type="button" class="linkbtn" id="pReport">${ico("flag")}${t("إبلاغ عن مقدم الخدمة")}</button><button type="button" class="linkbtn" id="pHide">${ico("eyeoff")}${t("إخفاء من الخريطة")}</button></div>`}
+      ${p.listing ? `<button type="button" class="btn ghost sm" id="pClaim">${ico("shield")}${t("هل تملك هذا النشاط؟")}</button>
+        <div class="linkrow"><a class="linkbtn" target="_blank" rel="noopener" href="${waLink(C.supportWhatsapp, t("السلام عليكم، أطلب إزالة نشاط «{name}» (رقم {id}) من {app}.", { name: p.name, id: p.id, app: APP }))}">${ico("trash")}${t("اطلب إزالة هذا النشاط")}</a><button type="button" class="linkbtn" id="pHide">${ico("eyeoff")}${t("إخفاء من الخريطة")}</button></div>`
+      : self ? "" : `<div class="linkrow"><button type="button" class="linkbtn" id="pReport">${ico("flag")}${t("إبلاغ عن مقدم الخدمة")}</button><button type="button" class="linkbtn" id="pHide">${ico("eyeoff")}${t("إخفاء من الخريطة")}</button></div>`}
     </div>`, m => {
     m.querySelector("#pReport")?.addEventListener("click", () => {
       if (needLogin(t("سجّل دخولك لترسل البلاغ، حتى نتأكد أن البلاغات حقيقية."))) return;
@@ -575,6 +588,7 @@ function providerBox(id) {
       requestForm(p);
     });
     m.querySelector("#pEdit")?.addEventListener("click", () => providerSetup());
+    m.querySelector("#pClaim")?.addEventListener("click", () => verifyBox(p));
   });
 }
 const REPORT_REASONS = ["معلومات أو رقم غير صحيح", "احتيال أو طلب مبالغ مقدماً", "سلوك أو ألفاظ مسيئة", "محتوى غير لائق", "لم يعد يقدّم الخدمة", "سبب آخر"];
@@ -746,6 +760,7 @@ function renderPage() {
   v.querySelector("#toSignup")?.addEventListener("click", () => openAuth("signup"));
   v.querySelector("#toLogin")?.addEventListener("click", () => openAuth("login"));
   v.querySelector("[data-avatar]")?.addEventListener("click", avatarBox);
+  v.querySelector("#verifyMe")?.addEventListener("click", () => verifyBox(null));
   (BIND[tab] || (() => {}))(v);
 }
 const copyRow = (l, v) => `<div class="copyrow"><span class="t"><span>${l}</span><bdi dir="ltr">${esc(v)}</bdi></span><button data-copy="${esc(v)}">${ico("copy")}${t("نسخ")}</button></div>`;
@@ -754,7 +769,7 @@ const PAGES = {
     if (!session) return guestHtml("bell", t("سجّل لتصلك الإشعارات"), t("أنشئ حساباً مجاناً لتصلك إشعارات طلباتك فوراً، حتى والجوال مقفل."));
     if (!notes.length) return `<div class="empty">${ico("bell")}<b>${t("لا توجد إشعارات بعد")}</b><span>${t("ستظهر هنا الطلبات الجديدة وتحديثاتها")}</span></div>`;
     return `<p class="swipehint">${t("اسحب الإشعار يميناً أو يساراً، أو اضغط عليه مطوّلاً لحذفه")}</p>
-    <div class="list">${notes.map(n => `<div class="swipe" data-nid="${n.id}"><button class="sdel l" aria-label="${t("حذف")}">${ico("trash")}</button><button class="sdel r" aria-label="${t("حذف")}">${ico("trash")}</button><button class="row ${n.read ? "" : "unread"}" data-req="${n.request_id || ""}" data-rep="${n.report_id || ""}"><span class="ic">${ico("bell")}</span><span class="t"><b>${esc(noteTitle(n))}</b>${n.body ? `<span>${esc(n.body)}</span>` : ""}</span><span class="end">${fmtDate(n.created_at)}</span></button></div>`).join("")}</div>
+    <div class="list">${notes.map(n => `<div class="swipe" data-nid="${n.id}"><button class="sdel l" aria-label="${t("حذف")}">${ico("trash")}</button><button class="sdel r" aria-label="${t("حذف")}">${ico("trash")}</button><button class="row ${n.read ? "" : "unread"}" data-req="${n.request_id || ""}" data-rep="${n.report_id || ""}" data-kind="${n.kind || ""}"><span class="ic">${ico("bell")}</span><span class="t"><b>${esc(noteTitle(n))}</b>${n.body ? `<span>${esc(n.body)}</span>` : ""}</span><span class="end">${fmtDate(n.created_at)}</span></button></div>`).join("")}</div>
     <div class="center"><button class="linkbtn" id="clearNotes">${ico("trash")}${t("مسح كل الإشعارات")}</button></div>`;
   },
   orders() {
@@ -778,7 +793,8 @@ const PAGES = {
       <div class="field"><label>${t("الجوال")}</label><div class="v">${ico("phone")}<span>${phoneHtml(u.phone)}</span></div></div>
       <div class="field"><label>${isPhoneAcct() ? t("رقم الدخول") : t("البريد الإلكتروني")}</label><div class="v">${ico(isPhoneAcct() ? "phone" : "mail")}<span dir="ltr">${esc(loginId())}</span></div></div>
       <div class="pad form">
-        <div class="card brand"><b>${u.is_provider ? (u.active !== false ? t("خدمتك ظاهرة على الخريطة") : t("خدمتك مخفية حالياً")) : t("تقدّم خدمة؟")}</b><span class="muted">${u.is_provider ? (u.services || []).map(sName).join(t("، ")) + (u.hours ? " · " + hoursText(u.hours) : "") : t("سجّلها مجاناً وتظهر لمن يحتاجها قريباً منك.")}</span><button class="btn sm" data-go="mystore">${u.is_provider ? t("إدارة خدمتي") : t("سجّل خدمتك")}</button></div>
+        <div class="card brand"><b>${u.is_provider ? (u.active !== false ? t("خدمتك ظاهرة على الخريطة") : t("خدمتك مخفية حالياً")) : t("تقدّم خدمة؟")}</b><span class="muted">${u.is_provider ? (u.services || []).map(sName).join(t("، ")) + (u.hours ? " · " + hoursText(u.hours) : "") : t("سجّلها مجاناً وتظهر لمن يحتاجها قريباً منك.")}</span><button class="btn sm" data-go="mystore">${u.is_provider ? t("إدارة خدمتي") : t("سجّل خدمتك")}</button>
+          ${u.is_provider ? (u.verified ? `<span class="pill done vpill">${ico("shield")}${t("حسابك موثّق")}</span>` : `<button class="btn ghost sm" id="verifyMe">${ico("shield")}${t("وثّق رقمك واحصل على علامة موثّق")}</button>`) : ""}</div>
         <button class="btn ghost" id="editProfile">${t("تعديل بياناتي")}</button>
       </div>`;
   },
@@ -819,6 +835,7 @@ const BIND = {
     v.querySelectorAll("[data-req]").forEach(b => b.onclick = () => {
       const w = b.closest(".swipe"); if (w && w.className.includes("open")) { w.className = "swipe"; return; }
       const r = +b.dataset.rep, id = +b.dataset.req; if (r) adminReport(r); else if (id) reqDetails(id);
+      else if (b.dataset.kind === "verify" && isAdmin) { adminTab = "verify"; go("admin"); }
     });
     v.querySelectorAll(".swipe").forEach(w => {
       const row = w.querySelector(".row"); let x0 = null, y0 = 0, dx = 0, lp = null;
@@ -987,6 +1004,54 @@ function squareImage(file, size) {
     img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("img")); };
     img.src = url;
   });
+}
+/* ===== المطالبة بالنشاط والتوثيق ===== */
+const vMark = () => `<span class="vmark" title="${t("موثّق")}">${ico("check")}</span>`;
+function claimFromUrl() {
+  const tok = new URLSearchParams(location.search).get("claim");
+  if (tok) { store.set("claim", tok); history.replaceState(history.state, "", location.pathname); }
+}
+async function processClaim() {
+  const tok = store.get("claim", null); if (!tok) return;
+  const { data: info } = await sb.rpc("claim_info", { tok });
+  if (!info || !["new", "sent"].includes(info.status)) {
+    store.set("claim", null);
+    toast(info ? t("هذا النشاط تمت المطالبة به من قبل.") : t("رابط المطالبة غير صحيح."));
+    return;
+  }
+  if (!session) {
+    openAuth("signup", { why: t("أنشئ حسابك برقم {p} لتستلم نشاط «{name}» وتديره بنفسك.", { p: "0" + info.phone, name: info.name }), role: "provider", phone: info.phone, name: info.name });
+    return;
+  }
+  const { data } = await sb.rpc("claim_listing", { tok });
+  if (data?.ok) {
+    store.set("claim", null); await loadMe(); loadProviders(); renderDrawer();
+    modal(`<h3 class="okc">${ico("shield")}${t("أصبح النشاط باسمك ✓")}</h3>
+      <p class="lead">${t("نشاط «{name}» مرتبط الآن بحسابك ويظهر بعلامة «موثّق». راجع بياناته وعدّل ما تريد.", { name: esc(info.name) })}</p>
+      <div class="form"><button class="btn" id="cEdit">${t("راجع بيانات خدمتك")}</button><button class="btn ghost" data-close>${t("لاحقاً")}</button></div>`,
+      m => m.querySelector("#cEdit").onclick = () => providerSetup());
+  } else if (data?.reason === "phone") {
+    modal(`<h3>${ico("info")}${t("الرابط خاص برقم آخر")}</h3>
+      <p class="lead">${t("هذا الرابط لنشاط مسجّل برقم {p}. سجّل خروجك ثم ادخل أو أنشئ حساباً بذلك الرقم.", { p: phoneHtml(data.phone) })}</p>
+      <div class="form"><button class="btn" id="cOut">${t("تسجيل الخروج")}</button><button class="btn ghost" id="cCancel">${t("إلغاء")}</button></div>`, m => {
+      m.querySelector("#cOut").onclick = async () => { m.remove(); await logout(); processClaim(); };
+      m.querySelector("#cCancel").onclick = () => { store.set("claim", null); goBack(); };
+    });
+  }
+}
+async function verifyBox(p) {
+  if (needLogin(p ? t("سجّل دخولك أولاً لتثبت ملكيتك للنشاط.") : t("سجّل دخولك أولاً."), () => verifyBox(p), "provider")) return;
+  const { data: code, error } = await sb.rpc("request_verify", { lid: p ? p.lid : null });
+  if (error || !code) return toast(t("تعذّر إنشاء الرمز، حاول لاحقاً"));
+  const target = p ? p.phone : me?.phone;
+  const msg = p ? t("طلب ملكية نشاط «{name}» (رقم {id}) في {app}.\nرمز التحقق: {code}", { name: p.name, id: p.id, app: APP, code })
+    : t("طلب توثيق رقمي في {app}.\nالاسم: {name}\nرمز التحقق: {code}", { name: me?.name || "", app: APP, code });
+  modal(`<h3>${ico("shield")}${p ? t("إثبات ملكية النشاط") : t("توثيق رقمك")}</h3>
+    <p class="lead">${t("أرسل هذا الرمز عبر واتساب من الرقم {p}، لنتأكد أنه رقمك ونعتمد طلبك.", { p: phoneHtml(target || "") })}</p>
+    <div class="codebig" dir="ltr">${num(code)}</div>
+    <div class="form"><a class="btn wa" target="_blank" rel="noopener" href="${waLink(C.supportWhatsapp, msg)}">${ico("wa")}${t("أرسل الرمز عبر واتساب")}</a>
+    <button class="btn ghost" data-close>${t("لاحقاً")}</button></div>
+    <p class="small muted center">${t("يجب أن تُرسل الرسالة من نفس الرقم، وإلا لن يُعتمد الطلب. يصلك إشعار عند الاعتماد.")}</p>`);
 }
 function modal(html, after) {
   app.querySelector(".modal")?.remove();

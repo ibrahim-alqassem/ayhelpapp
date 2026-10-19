@@ -346,3 +346,37 @@ button.avatar img{border-radius:50%}
 .auth.compact .err:empty{display:none}
 .auth.compact .in input{padding-top:11px;padding-bottom:11px}
 .auth.compact .terms{margin:0}
+/* أنشطة غير موثّقة + التوثيق */
+.mk.unv{background:var(--surface);border-color:var(--brand);border-style:dashed}
+.mk.unv svg{stroke:var(--brand)}
+.vmark{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#1D9BF0;margin-inline-start:6px;vertical-align:middle;flex:none}
+.vmark svg{width:12px;height:12px;stroke:#fff;stroke-width:3}
+.unvnote{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--muted);background:var(--bg);border:1px dashed var(--line);border-radius:12px;padding:8px 10px;margin:4px 0 8px}
+.unvnote svg{width:18px;height:18px;flex:none}
+.codebig{font-family:var(--f-display);font-size:40px;font-weight:700;letter-spacing:10px;text-align:center;padding:14px;border-radius:16px;background:var(--brand-soft);color:var(--brand);margin:8px 0 14px}
+.codebig.sm{font-size:28px;padding:8px;margin:6px 0}
+.vpill{display:inline-flex;align-items:center;gap:6px;align-self:flex-start}
+.vpill svg{width:14px;height:14px}
+/* لوحة الإدارة */
+.tabs.adm button{padding:8px 4px;font-size:13px}
+.admmap{height:260px}
+.admmap #admMap{height:100%}
+.admtools{position:absolute;top:8px;inset-inline-start:8px;z-index:600;display:flex;gap:6px}
+.admtools button{background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-size:13px;font-weight:600;display:flex;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.admtools svg{width:18px;height:18px}
+.row2{display:flex;gap:8px}
+.row2 input{flex:1;min-width:0;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:10px 12px;outline:none}
+.row2 .btn{width:auto;padding-inline:14px}
+.chiprow{display:flex;gap:6px;flex-wrap:wrap}
+.chipbtn{padding:7px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-size:13px;color:var(--muted)}
+.chipbtn[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:var(--brand-ink);font-weight:600}
+.admlist .lrow{align-items:center}
+.admlist .acts{display:flex;gap:2px;flex:none}
+.admlist .acts .iconbtn{width:36px;height:36px}
+.admlist .acts svg{width:19px;height:19px}
+.wa-i{color:var(--wa)}
+.msgprev{white-space:pre-wrap;font:inherit;font-size:13px;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px;margin:6px 0 12px;max-height:180px;overflow:auto}
+.xprev{display:flex;flex-direction:column;gap:6px;font-size:13px;max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:10px}
+.vcard{display:flex;flex-direction:column;gap:6px}
+.vcard .btns{display:flex;gap:8px}
+.vcard .btns .btn{flex:1}
