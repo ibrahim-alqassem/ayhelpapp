@@ -259,30 +259,31 @@ function renderAuth(el, mode) {
   const signup = mode === "signup", o = authOpts, role = o.role || "customer";
   el.innerHTML = `
   <header class="top"><button class="iconbtn" id="aBack" aria-label="${t("رجوع")}">${ico("back", "i flip")}</button><h1>${signup ? t("حساب جديد") : t("تسجيل الدخول")}</h1><span class="sp"></span></header>
-  <div class="auth">
-    <div class="brandmark"><img class="logoimg" src="icon-192.png" alt=""><div><h1>${APP}</h1><p>${TAG}</p></div></div>
+  <div class="auth${signup ? " compact" : ""}">
+    ${signup ? "" : `<div class="brandmark"><img class="logoimg" src="icon-192.png" alt=""><div><h1>${APP}</h1><p>${TAG}</p></div></div>`}
     ${o.why ? `<div class="notebox">${ico("info")}<span>${esc(o.why)}</span></div>` : ""}
     <h2>${signup ? t("أنشئ حسابك مجاناً") : t("مرحباً بعودتك!")}</h2>
     <p class="sub">${signup ? t("سجّل برقم جوالك وكلمة مرور خلال ثوانٍ") : t("ادخل برقم جوالك وكلمة المرور")}</p>
     <form class="form" id="aForm" novalidate>
-      ${signup ? `<div class="in"><label>${t("أريد أن")}</label><div class="seg2">
+      ${signup ? `<div class="in"><label>${t("أريد أن")}</label><div class="seg2 box">
         <label><input type="radio" name="role" value="customer" ${role === "customer" ? "checked" : ""}><span>${ico("search")}${t("أطلب خدمة")}</span></label>
         <label><input type="radio" name="role" value="provider" ${role === "provider" ? "checked" : ""}><span>${ico("store")}${t("أقدّم خدمة")}</span></label></div>
-        <div class="hint">${t("الحساب واحد للحالتين، وتستطيع عرض خدمتك لاحقاً في أي وقت.")}</div></div>
+</div>
       <div class="in"><label for="aName">${t("الاسم")}</label><input id="aName" autocomplete="name" placeholder="${t("اسمك أو اسم نشاطك")}"></div>` : ""}
-      <div class="in" id="phoneIn"><label for="aPhone">${t("رقم الجوال")}</label><div class="phone"><span id="aCC">+966</span><input id="aPhone" inputmode="numeric" ${signup ? 'maxlength="10"' : ""} placeholder="5XXXXXXXX" autocomplete="${signup ? "tel-national" : "username"}"></div><div class="hint">${signup ? t("رقمك هو اسم الدخول، ويظهر لمن تتعامل معه للاتصال أو واتساب.") : ""}</div></div>
-      <div class="in"><label for="aPass">${t("كلمة المرور")}</label><input id="aPass" type="password" class="ltr" autocomplete="${signup ? "new-password" : "current-password"}" placeholder="${t("٦ أحرف أو أرقام على الأقل")}"></div>
+      <div class="in" id="phoneIn"><label for="aPhone">${t("رقم الجوال")}</label><div class="phone"><span id="aCC">+966</span><input id="aPhone" inputmode="numeric" ${signup ? 'maxlength="10"' : ""} placeholder="5XXXXXXXX" autocomplete="${signup ? "tel-national" : "username"}"></div></div>
+      <div class="in"><label for="aPass">${t("كلمة المرور")}</label><div class="passw"><input id="aPass" type="password" class="ltr" autocomplete="${signup ? "new-password" : "current-password"}" placeholder="${signup ? t("٦ أحرف أو أرقام على الأقل") : t("كلمة المرور")}"><button type="button" class="eye" id="aEye">${t("إظهار")}</button></div></div>
       <div class="err" id="aErr" role="alert"></div>
       ${signup ? `<p class="terms">${t("بالمتابعة، أوافق على")} <button type="button" id="aTerms">${t("الشروط والأحكام وسياسة الخصوصية")}</button></p>` : ""}
       <button class="btn" type="submit" id="aBtn">${signup ? t("إنشاء الحساب") : t("دخول")}</button>
       ${signup ? "" : `<button type="button" class="textlink center" id="aForgot">${t("نسيت كلمة المرور؟")}</button>`}
     </form>
-    <div class="switchbox">${signup ? t("لديك حساب؟") : t("ليس لديك حساب؟")} <button type="button" class="btn ghost sm" id="aSwitch">${signup ? t("سجّل الدخول") : t("أنشئ حساباً جديداً")}</button></div>
+    <p class="alt">${signup ? t("لديك حساب؟") : t("ليس لديك حساب؟")} <button type="button" class="textlink" id="aSwitch">${signup ? t("تسجيل الدخول") : t("أنشئ حساباً مجاناً")}</button></p>
   </div>`;
   const q = s => el.querySelector(s), err = q("#aErr");
   q("#aBack").onclick = goBack;
   q("#aSwitch").onclick = () => renderAuth(el, signup ? "login" : "signup");
   if (q("#aTerms")) q("#aTerms").onclick = termsBox;
+  q("#aEye").onclick = () => { const p = q("#aPass"), show = p.type === "password"; p.type = show ? "text" : "password"; q("#aEye").textContent = show ? t("إخفاء") : t("إظهار"); };
   /* دخول خفي بالبريد (للمدير والمراجع): خانة الجوال تقبل البريد إذا كُتب أو لُصق فيها «@»،
      والضغط المطوّل على +966 يفتح لوحة مفاتيح البريد */
   let byEmail = false;

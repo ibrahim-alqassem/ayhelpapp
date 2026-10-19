@@ -414,5 +414,8 @@ window.I18N_EN = {
 "سجّل لتتابع طلباتك": "Sign up to track your requests",
 "أنشئ حساباً مجاناً لتطلب الخدمة من داخل الموقع وتتابع حالة طلباتك.": "Create a free account to request services in the app and track their status.",
 "يمكنك الدخول مرة أخرى برقم جوالك وكلمة المرور.": "You can sign in again with your mobile number and password.",
-"سجّل برقم جوالك، ثم «سجّل خدمتك» وحدد مكانك وساعات عملك. تصلك الطلبات في الإشعارات.": "Sign up with your mobile number, then “List your service”, set your location and hours. Requests arrive in notifications."
+"سجّل برقم جوالك، ثم «سجّل خدمتك» وحدد مكانك وساعات عملك. تصلك الطلبات في الإشعارات.": "Sign up with your mobile number, then “List your service”, set your location and hours. Requests arrive in notifications.",
+"إظهار": "Show",
+"إخفاء": "Hide",
+"أنشئ حساباً مجاناً": "Create a free account"
 };
