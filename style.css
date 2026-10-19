@@ -342,3 +342,7 @@ button.avatar img{border-radius:50%}
 .passw .eye{position:absolute;left:6px;top:50%;transform:translateY(-50%);color:var(--brand);font-size:13px;font-weight:600;padding:8px 10px}
 .auth .alt{text-align:center;color:var(--muted);font-size:14px;margin:2px 0 0}
 .auth .alt .textlink{text-decoration:none}
+.auth.compact .sub.why{color:var(--brand);font-weight:600}
+.auth.compact .err:empty{display:none}
+.auth.compact .in input{padding-top:11px;padding-bottom:11px}
+.auth.compact .terms{margin:0}

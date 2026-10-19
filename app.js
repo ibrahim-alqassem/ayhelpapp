@@ -261,11 +261,11 @@ function renderAuth(el, mode) {
   <header class="top"><button class="iconbtn" id="aBack" aria-label="${t("رجوع")}">${ico("back", "i flip")}</button><h1>${signup ? t("حساب جديد") : t("تسجيل الدخول")}</h1><span class="sp"></span></header>
   <div class="auth${signup ? " compact" : ""}">
     ${signup ? "" : `<div class="brandmark"><img class="logoimg" src="icon-192.png" alt=""><div><h1>${APP}</h1><p>${TAG}</p></div></div>`}
-    ${o.why ? `<div class="notebox">${ico("info")}<span>${esc(o.why)}</span></div>` : ""}
+    ${o.why && !signup ? `<div class="notebox">${ico("info")}<span>${esc(o.why)}</span></div>` : ""}
     <h2>${signup ? t("أنشئ حسابك مجاناً") : t("مرحباً بعودتك!")}</h2>
-    <p class="sub">${signup ? t("سجّل برقم جوالك وكلمة مرور خلال ثوانٍ") : t("ادخل برقم جوالك وكلمة المرور")}</p>
+    <p class="sub${o.why && signup ? " why" : ""}">${o.why && signup ? esc(o.why) : signup ? t("سجّل برقم جوالك وكلمة مرور خلال ثوانٍ") : t("ادخل برقم جوالك وكلمة المرور")}</p>
     <form class="form" id="aForm" novalidate>
-      ${signup ? `<div class="in"><label>${t("أريد أن")}</label><div class="seg2 box">
+      ${signup ? `<div class="in"><div class="seg2 box" role="radiogroup" aria-label="${t("أريد أن")}">
         <label><input type="radio" name="role" value="customer" ${role === "customer" ? "checked" : ""}><span>${ico("search")}${t("أطلب خدمة")}</span></label>
         <label><input type="radio" name="role" value="provider" ${role === "provider" ? "checked" : ""}><span>${ico("store")}${t("أقدّم خدمة")}</span></label></div>
 </div>
