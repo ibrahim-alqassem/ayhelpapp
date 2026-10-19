@@ -177,7 +177,7 @@ async function boot() {
   maybeInstallPrompt();
   const { data } = await sb.auth.getSession();
   session = data.session;
-  if (session) await afterLogin(); else processClaim();
+  if (session) await afterLogin(); else processClaim().catch(e => console.warn(e));
   sb.auth.onAuthStateChange((ev, s) => {
     if (ev === "PASSWORD_RECOVERY") { session = s; newPasswordBox(); return; }
     if (ev === "SIGNED_OUT") { session = null; me = null; cleanupRealtime(); return; }
@@ -186,8 +186,8 @@ async function boot() {
 }
 async function afterLogin() {
   await loadMe();
-  isAdmin = (await sb.rpc("is_app_admin").catch(() => ({}))).data === true;
-  await processClaim();
+  try { isAdmin = (await sb.rpc("is_app_admin")).data === true; } catch (e) { isAdmin = false; }
+  try { await processClaim(); } catch (e) { console.warn(e); }
   renderDrawer(); renderNav(); renderTop();
   if (tab !== "home") renderPage();
   loadRequests(); loadNotes(); subscribe();
@@ -311,6 +311,14 @@ function renderAuth(el, mode) {
     cc.addEventListener("pointerdown", () => { lp = setTimeout(() => { forced = true; mailMode(true); ph.blur(); setTimeout(() => ph.focus(), 50); }, 700); });
     ["pointerup", "pointerleave", "pointercancel"].forEach(ev => cc.addEventListener(ev, lpEnd));
   }
+  if (!signup && !o.phone) {
+    const last = store.get("lastLogin", "");
+    if (last) { ph.value = last; if (last.includes("@")) mailMode(true); }
+    if (window.PasswordCredential && navigator.credentials) navigator.credentials.get({ password: true, mediation: "optional" }).then(c => {
+      if (!c || !c.password || !el.isConnected) return;
+      ph.value = c.id.includes("@") ? c.id : "0" + normPhone(c.id); mailMode(c.id.includes("@")); q("#aPass").value = c.password;
+    }).catch(() => {});
+  }
   if (q("#aForgot")) q("#aForgot").onclick = async () => {
     if (!byEmail) {
       const p = normPhone(q("#aPhone").value);
@@ -360,6 +368,9 @@ function renderAuth(el, mode) {
     }
     if (!res.data.session) { err.className = "err ok"; err.textContent = t("أرسلنا رابط التفعيل لبريدك. افتحه ثم سجّل الدخول."); return; }
     session = res.data.session; el.remove();
+    const loginName = byEmail ? email : "0" + phone;
+    store.set("lastLogin", loginName);
+    try { if (window.PasswordCredential) navigator.credentials.store(new PasswordCredential({ id: loginName, password: pass, name: signup ? q("#aName").value.trim() : loginName })).catch(() => {}); } catch (e) {}
     await afterLogin();
     toast(signup ? t("أهلاً {name}! حسابك جاهز", { name: me?.name || "" }) : t("أهلاً بعودتك"));
     if (chosen === "provider" && !me?.is_provider) providerSetup();
@@ -701,7 +712,7 @@ function providerSetup() {
     <p class="lead">${t("تظهر للناس على الخريطة ويتواصلون معك على جوالك")} ${phoneHtml(p.phone)}</p>
     <form class="form" id="sForm" novalidate>
       <div class="in"><label>${t("الخدمات التي تقدّمها")}</label>${CATS.map(group).join("")}</div>
-      <div class="in"><label for="sDist">${t("المدينة والحي")}</label><input id="sDist" value="${esc(p.district || "")}" placeholder="${t("مثال: الرياض — حي المنسية")}"></div>
+      <div class="in"><label for="sDist">${t("المدينة والحي")}</label><input id="sDist" value="${esc(p.district || "")}" placeholder="${t("مثال: الرياض — حي المونسية")}"></div>
       <div class="in"><label>${t("ساعات العمل")}</label>
         <div class="seg2"><label><input type="radio" name="hrs" value="24" ${is24 ? "checked" : ""}><span>${ico("clock")}${t("٢٤ ساعة")}</span></label><label><input type="radio" name="hrs" value="custom" ${is24 ? "" : "checked"}><span>${t("وقت محدد")}</span></label></div>
         <div class="timepair" id="sTimes" ${is24 ? "hidden" : ""}><label>${t("من")}<input type="time" id="sFrom" value="${hf}"></label><label>${t("إلى")}<input type="time" id="sTo" value="${ht}"></label></div></div>

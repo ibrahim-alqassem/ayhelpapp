@@ -190,7 +190,7 @@ window.I18N_EN = {
 "تظهر للناس على الخريطة ويتواصلون معك على جوالك": "You'll appear on the map and people will contact you on",
 "الخدمات التي تقدّمها": "Services you offer",
 "المدينة والحي": "City and district",
-"مثال: الرياض — حي المنسية": "e.g. Riyadh — Al Munsiyah",
+"مثال: الرياض — حي المونسية": "e.g. Riyadh — Al Munsiyah",
 "ساعات العمل": "Working hours",
 "٢٤ ساعة": "24 hours",
 "وقت محدد": "Set hours",

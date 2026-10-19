@@ -77,7 +77,7 @@ function admAddView(el) {
     <div class="in"><label for="lName">${t("اسم النشاط")}</label><input id="lName" value="${esc(l.name || "")}" placeholder="${t("مثال: سطحة أبو فهد")}"></div>
     <div class="in"><label for="lPhone">${t("رقم الجوال")}</label><div class="phone"><span>+966</span><input id="lPhone" inputmode="numeric" maxlength="10" placeholder="5XXXXXXXX" value="${esc(l.phone || "")}"></div></div>
     <div class="in"><label>${t("الخدمات")}</label>${svcChecks("lsv", l.services)}</div>
-    <div class="in"><label for="lDist">${t("المدينة والحي")}</label><input id="lDist" value="${esc(l.district || "")}" placeholder="${t("مثال: الرياض — حي المنسية")}"></div>
+    <div class="in"><label for="lDist">${t("المدينة والحي")}</label><input id="lDist" value="${esc(l.district || "")}" placeholder="${t("مثال: الرياض — حي المونسية")}"></div>
     <div class="in"><label>${t("ساعات العمل")}</label>
       <div class="seg2"><label><input type="radio" name="lhrs" value="24" ${is24 ? "checked" : ""}><span>${ico("clock")}${t("٢٤ ساعة")}</span></label><label><input type="radio" name="lhrs" value="custom" ${is24 ? "" : "checked"}><span>${t("وقت محدد")}</span></label></div>
       <div class="timepair" id="lTimes" ${is24 ? "hidden" : ""}><label>${t("من")}<input type="time" id="lFrom" value="${hf}"></label><label>${t("إلى")}<input type="time" id="lTo" value="${ht}"></label></div></div>
