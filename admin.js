@@ -104,7 +104,7 @@ function admAddView(el) {
   const fillDist = async (lat, lng) => {
     try {
       const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&zoom=16&accept-language=ar&lat=${lat}&lon=${lng}`).then(x => x.json());
-      const ad = r.address || {}, city = ad.city || ad.town || ad.village || ad.county || ad.state || "";
+      const ad = r.address || {}, city = (ad.city || ad.town || ad.village || ad.county || ad.state || "").replace(/^(محافظة|منطقة|مدينة)\s+/, "");
       const dist = ad.suburb || ad.neighbourhood || ad.quarter || ad.city_district || "";
       const v = [city, dist ? (/^حي\s/.test(dist) ? dist : t("حي") + " " + dist) : ""].filter(Boolean).join(" — ");
       if (v) { q("#lDist").value = v; saveDraft(); }
