@@ -65,9 +65,12 @@ function loadScript(src) {
 
 /* ---------- إضافة / تعديل نشاط ---------- */
 let admMapObj = null, admSat = false;
+/* مسودة الإضافة تبقى محفوظة حتى تضغط «أضف النشاط» */
+const ADM_DEF = () => ({ hours: "08:00-23:00", price_note: t("يبدأ من ١٠ ريال"), services: [] });
 function admAddView(el) {
-  const l = admEdit || {};
-  const is24 = !l.hours || l.hours === "24", [hf, ht] = is24 ? ["08:00", "22:00"] : l.hours.split("-");
+  const draft = !admEdit ? store.get("admDraft", null) : null;
+  const l = admEdit || draft || ADM_DEF();
+  const is24 = l.hours === "24", [hf, ht] = (!l.hours || is24) ? ["08:00", "23:00"] : l.hours.split("-");
   el.innerHTML = `<div class="pad form">
     <div class="minimap admmap"><div id="admMap"></div><div class="center-pin">${ico("pin")}</div>
       <div class="admtools"><button type="button" id="aSat">${t("قمر صناعي")}</button><button type="button" id="aGps">${ico("gps")}</button></div></div>
@@ -82,15 +85,15 @@ function admAddView(el) {
       <div class="seg2"><label><input type="radio" name="lhrs" value="24" ${is24 ? "checked" : ""}><span>${ico("clock")}${t("٢٤ ساعة")}</span></label><label><input type="radio" name="lhrs" value="custom" ${is24 ? "" : "checked"}><span>${t("وقت محدد")}</span></label></div>
       <div class="timepair" id="lTimes" ${is24 ? "hidden" : ""}><label>${t("من")}<input type="time" id="lFrom" value="${hf}"></label><label>${t("إلى")}<input type="time" id="lTo" value="${ht}"></label></div></div>
     <div class="in"><label for="lPrice">${t("السعر التقريبي")} <span class="opt">${t("(اختياري)")}</span></label><input id="lPrice" value="${esc(l.price_note || "")}"></div>
-    <div class="in"><label for="lBio">${t("نبذة")} <span class="opt">${t("(اختياري)")}</span></label><input id="lBio" maxlength="120" value="${esc(l.bio || "")}"></div>
+    <div class="in"><label for="lBio">${t("نبذة")} <span class="opt">${t("(اختياري)")}</span></label><input id="lBio" maxlength="120" value="${esc(l.bio || "")}" placeholder="${t("تُكتب تلقائياً حسب الخدمات المختارة")}"></div>
     <label class="check"><input type="checkbox" id="lConsent" ${l.consent ? "checked" : ""}> ${t("أخذت موافقة صاحب النشاط على إضافته")}</label>
     <div class="err" id="lErr" role="alert"></div>
     <button class="btn" id="lSave">${admEdit ? t("حفظ التعديل") : t("أضف النشاط")}</button>
-    ${admEdit ? `<button class="btn ghost" id="lCancel">${t("إلغاء التعديل")}</button>` : ""}
+    ${admEdit ? `<button class="btn ghost" id="lCancel">${t("إلغاء التعديل")}</button>` : `<button type="button" class="linkbtn center" id="lClear">${ico("trash")}${t("مسح الحقول والبدء من جديد")}</button>`}
   </div>`;
   const q = s => el.querySelector(s), err = q("#lErr");
-  const start = l.lat != null ? [l.lat, l.lng] : (myPos || (map ? [map.getCenter().lat, map.getCenter().lng] : [24.7136, 46.6753]));
-  admMapObj = L.map(q("#admMap"), { zoomControl: true, attributionControl: true }).setView(start, l.lat != null ? 18 : 15);
+  const start = l.lat != null ? [l.lat, l.lng] : draft?.c ? draft.c : (myPos || (map ? [map.getCenter().lat, map.getCenter().lng] : [24.7136, 46.6753]));
+  admMapObj = L.map(q("#admMap"), { zoomControl: true, attributionControl: true }).setView(start, l.lat != null || draft?.c ? 17 : 15);
   admMapObj.attributionControl.setPrefix(false);
   const osm = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, className: isDark() ? "tiles-dark" : "", attribution: "© OpenStreetMap" });
   const sat = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, attribution: "Imagery © Esri" });
@@ -98,7 +101,16 @@ function admAddView(el) {
   const setBase = () => { [osm, sat, lbl].forEach(x => admMapObj.removeLayer(x)); if (admSat) { sat.addTo(admMapObj); lbl.addTo(admMapObj); } else osm.addTo(admMapObj); q("#aSat").textContent = admSat ? t("خريطة") : t("قمر صناعي"); };
   setBase(); setTimeout(() => admMapObj.invalidateSize(), 250);
   q("#aSat").onclick = () => { admSat = !admSat; setBase(); };
-  q("#aGps").onclick = () => navigator.geolocation?.getCurrentPosition(g => admMapObj.setView([g.coords.latitude, g.coords.longitude], 18), () => toast(t("اسمح للموقع بالوصول لموقعك من إعدادات المتصفح")), { enableHighAccuracy: true });
+  const fillDist = async (lat, lng) => {
+    try {
+      const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&zoom=16&accept-language=ar&lat=${lat}&lon=${lng}`).then(x => x.json());
+      const ad = r.address || {}, city = ad.city || ad.town || ad.village || ad.county || ad.state || "";
+      const dist = ad.suburb || ad.neighbourhood || ad.quarter || ad.city_district || "";
+      const v = [city, dist ? (/^حي\s/.test(dist) ? dist : t("حي") + " " + dist) : ""].filter(Boolean).join(" — ");
+      if (v) { q("#lDist").value = v; saveDraft(); }
+    } catch (x) {}
+  };
+  q("#aGps").onclick = () => navigator.geolocation?.getCurrentPosition(g => { admMapObj.setView([g.coords.latitude, g.coords.longitude], 18); fillDist(g.coords.latitude, g.coords.longitude); }, () => toast(t("اسمح للموقع بالوصول لموقعك من إعدادات المتصفح")), { enableHighAccuracy: true });
   const doSearch = async () => {
     const s = q("#aSearch").value.trim(); if (!s) return;
     try {
@@ -109,18 +121,31 @@ function admAddView(el) {
         const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=sa&accept-language=ar&viewbox=${vb}&q=${encodeURIComponent(q)}`).then(x => x.json());
         if (r[0]) { hit = r[0]; break; }
       }
-      if (hit) admMapObj.setView([+hit.lat, +hit.lon], 16); else toast(t("لم نجد هذا المكان، جرّب اسماً آخر"));
+      if (hit) { admMapObj.setView([+hit.lat, +hit.lon], 16); fillDist(+hit.lat, +hit.lon); } else toast(t("لم نجد هذا المكان، جرّب اسماً آخر"));
     } catch (x) { toast(t("تعذّر البحث الآن")); }
   };
   q("#aSearchB").onclick = doSearch; q("#aSearch").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); doSearch(); } };
   q("#aLinkB").onclick = async () => {
     const b = q("#aLinkB"); b.disabled = true;
     const p = await resolveMapLink(q("#aLink").value); b.disabled = false;
-    if (p) { admMapObj.setView(p, 18); toast(t("وضعنا الدبوس على الموقع")); }
+    if (p) { admMapObj.setView(p, 18); fillDist(p[0], p[1]); toast(t("وضعنا الدبوس على الموقع")); }
     else toast(t("لم نستخرج الموقع من الرابط. افتح الرابط وانسخ الإحداثيات بدلاً منه."));
   };
   el.querySelectorAll("input[name=lhrs]").forEach(r => r.onchange = () => q("#lTimes").hidden = el.querySelector("input[name=lhrs]:checked").value === "24");
   q("#lPhone").oninput = e => e.target.value = toEn(e.target.value).replace(/\D/g, "").slice(0, 10);
+  const svcSel = () => [...el.querySelectorAll("input[name=lsv]:checked")].map(x => x.value);
+  const autoBio = () => svcSel().map(sName).join(t("، "));
+  let bioAuto = !q("#lBio").value || q("#lBio").value === autoBio();
+  q("#lBio").addEventListener("input", () => { bioAuto = !q("#lBio").value; });
+  el.querySelectorAll("input[name=lsv]").forEach(x => x.addEventListener("change", () => { if (bioAuto) q("#lBio").value = autoBio(); }));
+  function saveDraft() {
+    if (admEdit) return;
+    const custom = el.querySelector("input[name=lhrs]:checked").value !== "24", c = admMapObj.getCenter();
+    store.set("admDraft", { name: q("#lName").value, phone: q("#lPhone").value, services: svcSel(), district: q("#lDist").value,
+      hours: custom ? q("#lFrom").value + "-" + q("#lTo").value : "24", price_note: q("#lPrice").value, bio: q("#lBio").value, consent: q("#lConsent").checked, c: [c.lat, c.lng] });
+  }
+  el.addEventListener("input", saveDraft); el.addEventListener("change", saveDraft); admMapObj.on("moveend", saveDraft);
+  q("#lClear")?.addEventListener("click", () => { store.set("admDraft", null); admAddView(el); });
   q("#lCancel")?.addEventListener("click", () => { admEdit = null; adminTab = "list"; renderPage(); });
   q("#lSave").onclick = async () => {
     err.className = "err"; err.textContent = "";
@@ -146,6 +171,7 @@ function admAddView(el) {
       return err.textContent = t(R[data?.reason] || "تعذّر الحفظ. حاول مرة أخرى.");
     }
     toast(admEdit ? t("تم حفظ التعديل") : t("أُضيف النشاط على الخريطة"));
+    if (!admEdit) store.set("admDraft", null);
     admEdit = null; loadProviders(); renderPage();
   };
 }
@@ -156,7 +182,7 @@ function admListView(el) {
   const list = admList.filter(l => admFilter === "all" || l.status === admFilter);
   const fb = (k, l) => `<button class="chipbtn" data-f="${k}" aria-pressed="${admFilter === k}">${t(l)} (${num(cnt(k))})</button>`;
   el.innerHTML = `<div class="pad form">
-    <div class="chiprow">${fb("new", "لم يُرسل")}${fb("sent", "أُرسل")}${fb("claimed", "تمت المطالبة")}${fb("all", "الكل")}</div>
+    <div class="chiprow">${fb("new", "لم يُرسل")}${fb("sent", "أُرسل")}${fb("claimed", "تمت المطالبة")}${fb("all", "الكل")}<button class="chipbtn" id="lRef" aria-label="${t("تحديث")}">↻ ${t("تحديث")}</button></div>
     ${cnt("new") ? `<button class="btn wa" id="qStart">${ico("wa")}${t("قائمة الإرسال السريعة ({n})", { n: num(cnt("new")) })}</button>` : ""}
     ${list.length ? `<div class="list admlist">${list.map(l => `<div class="row lrow">
       <span class="t"><b>${esc(l.name)} <span class="pill ${STL[l.status]?.[1] || ""}">${t(STL[l.status]?.[0] || l.status)}</span>${l.consent ? ` <span class="pill done">${t("موافق")}</span>` : ""}</b>
@@ -169,6 +195,7 @@ function admListView(el) {
   </div>`;
   el.querySelectorAll("[data-f]").forEach(b => b.onclick = () => { admFilter = b.dataset.f; admListView(el); });
   el.querySelector("#qStart")?.addEventListener("click", sendQueue);
+  el.querySelector("#lRef").onclick = async () => { await admLoad(); admListView(el); loadProviders(); toast(t("تم التحديث")); };
   el.querySelectorAll("[data-send]").forEach(a => a.addEventListener("click", async () => {
     const l = admList.find(x => x.id == a.dataset.send); if (l.status === "new") { await sb.rpc("admin_listing_status", { lid: l.id, st: "sent" }); l.status = "sent"; setTimeout(() => admListView(el), 800); }
   }));

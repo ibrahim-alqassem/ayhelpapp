@@ -522,5 +522,10 @@ window.I18N_EN = {
 "الكل": "All",
 "هذا الرقم مسجّل في التطبيق كمقدم خدمة أو كحساب بالفعل.": "This number is already registered in the app.",
 "يوجد نشاط مضاف بنفس الرقم.": "A business with this number already exists.",
-"رقم الجوال غير صحيح.": "Invalid mobile number."
+"رقم الجوال غير صحيح.": "Invalid mobile number.",
+"تحديث": "Refresh",
+"تم التحديث": "Updated",
+"تُكتب تلقائياً حسب الخدمات المختارة": "Filled automatically from the selected services",
+"مسح الحقول والبدء من جديد": "Clear the form and start over",
+"يبدأ من ١٠ ريال": "From 10 SAR"
 };

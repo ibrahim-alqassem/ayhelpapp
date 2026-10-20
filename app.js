@@ -238,9 +238,21 @@ function subscribe() {
   channel = sb.channel("u-" + session.user.id)
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${session.user.id}` }, p => {
       notes.unshift(p.new); renderNav(); if (tab === "notes") renderPage();
-      toast(noteTitle(p.new)); loadRequests();
+      toast(noteTitle(p.new)); loadRequests(); refreshAll();
     }).subscribe();
 }
+/* تحديث تلقائي: عند الرجوع للتطبيق، وكل دقيقة ما دام مفتوحاً، وعند وصول إشعار */
+let lastRefresh = Date.now();
+async function refreshAll() {
+  lastRefresh = Date.now();
+  await loadProviders();
+  if (!session) return;
+  await loadMe(); renderDrawer();
+  loadRequests(); loadNotes();
+  if (tab === "admin" && typeof admLoad === "function" && ["list", "verify"].includes(adminTab)) renderPage();
+}
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && Date.now() - lastRefresh > 5000 && typeof sb !== "undefined") refreshAll().catch(() => {}); });
+setInterval(() => { if (document.visibilityState === "visible" && !app.querySelector(".modal") && !app.querySelector(".authlayer")) refreshAll().catch(() => {}); }, 60000);
 function cleanupRealtime() { if (channel) { sb.removeChannel(channel); channel = null; } }
 const unread = () => notes.filter(n => !n.read).length;
 function needLogin(why, then, role) {
