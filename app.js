@@ -27,7 +27,7 @@ const CATS = [
   { id: "home", name: "خدمات المنزل", icon: "home" }
 ];
 const SERVICES = [
-  { id: "delivery", cat: "road", name: "توصيل", desc: "توصيل أغراض أو مشاوير", icon: "car" },
+  { id: "delivery", cat: "road", name: "توصيل", desc: "توصيل أغراض وطلبات", icon: "car" },
   { id: "battery", cat: "road", name: "اشتراك بطارية", desc: "اشتراك أو تبديل بطارية", icon: "battery" },
   { id: "fuel", cat: "road", name: "تزويد البنزين", desc: "توصيل وقود ٩١ أو ٩٥ أو ديزل", icon: "fuel" },
   { id: "tire", cat: "road", name: "تبديل الإطار", desc: "تركيب الاحتياطي أو رقعة", icon: "tire" },
@@ -1209,7 +1209,7 @@ function searchBox() {
   modal(`<h3>${ico("search")}${t("ابحث")}</h3><div class="in sbox"><input id="q" placeholder="${t("خدمة أو اسم مقدم خدمة أو حي")}"></div><div class="list rounded" id="qr"></div>`, m => {
     const q = m.querySelector("#q"), out = m.querySelector("#qr");
     const syn = { "سطح": "tow", "ونش": "tow", "وقود": "fuel", "بنزين": "fuel", "ديزل": "fuel", "كفر": "tire", "بنشر": "tire", "بطار": "battery", "مفتاح": "lock", "ميكانيك": "check",
-      "مشوار": "delivery", "توصيل": "delivery", "سباك": "plumbing", "موي": "plumbing", "ماء": "plumbing", "كهرب": "electric", "مكيف": "ac", "تكييف": "ac", "فريون": "ac",
+      "توصيل": "delivery", "سباك": "plumbing", "موي": "plumbing", "ماء": "plumbing", "كهرب": "electric", "مكيف": "ac", "تكييف": "ac", "فريون": "ac",
       "نظاف": "cleaning", "تنظيف": "cleaning", "عفش": "moving", "اثاث": "moving", "أثاث": "moving", "دهان": "paint", "صبغ": "paint", "نجار": "carpentry", "حشرات": "pest", "رش": "pest" };
     const draw = () => {
       const v = q.value.trim(), vl = v.toLowerCase();

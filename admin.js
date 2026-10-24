@@ -44,7 +44,7 @@ async function resolveMapLink(s) {
   return inKSA(r) ? r : null;   // نتجاهل أي موقع خارج المملكة (قد يكون موقعاً افتراضياً لصفحة لم تُفتح)
 }
 const SVC_WORDS = [["كهرباء سيارات", "check"], ["سطح", "tow"], ["سحب", "tow"], ["ونش", "tow"], ["بطاري", "battery"], ["بنزين", "fuel"], ["وقود", "fuel"], ["ديزل", "fuel"],
-  ["إطار", "tire"], ["اطار", "tire"], ["كفر", "tire"], ["بنشر", "tire"], ["فتح", "lock"], ["مفتاح", "lock"], ["فحص", "check"], ["ميكاني", "check"], ["توصيل", "delivery"], ["مشاوير", "delivery"],
+  ["إطار", "tire"], ["اطار", "tire"], ["كفر", "tire"], ["بنشر", "tire"], ["فتح", "lock"], ["مفتاح", "lock"], ["فحص", "check"], ["ميكاني", "check"], ["توصيل", "delivery"], ["طلبات", "delivery"],
   ["سباك", "plumbing"], ["كهرب", "electric"], ["تكييف", "ac"], ["مكيف", "ac"], ["تنظيف", "cleaning"], ["نقل عفش", "moving"], ["عفش", "moving"], ["دهان", "paint"], ["صباغ", "paint"],
   ["نجار", "carpentry"], ["حشر", "pest"], ["مكافحة", "pest"]];
 function parseServices(s) {

@@ -319,7 +319,7 @@ window.I18N_EN = {
 "خدمات الطريق": "Road services",
 "خدمات المنزل": "Home services",
 "توصيل": "Delivery",
-"توصيل أغراض أو مشاوير": "Deliver items or rides",
+"توصيل أغراض وطلبات": "Deliver items and orders",
 "اشتراك بطارية": "Battery jump-start",
 "اشتراك أو تبديل بطارية": "Jump-start or replace battery",
 "تزويد البنزين": "Fuel delivery",
